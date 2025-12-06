@@ -1,0 +1,29 @@
+# Build artifacts
+/target/
+
+# IDE settings
+.idea/
+.vscode/
+*.iml
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Cargo lock is included for binaries
+# Cargo.lock
+
+# Local configuration
+config/local.toml
+
+# Log files
+*.log
+
+# Backup files
+*.bak
+*.orig
