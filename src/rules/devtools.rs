@@ -11,6 +11,9 @@ pub fn get_devtools_rules() -> Vec<Box<dyn CleanRule>> {
         Box::new(NpmCacheRule),
         Box::new(YarnCacheRule),
         Box::new(PnpmCacheRule),
+        Box::new(NvmCacheRule),
+        Box::new(BunCacheRule),
+        Box::new(DenoCacheRule),
         // Python
         Box::new(PipCacheRule),
         Box::new(UvCacheRule),
@@ -18,6 +21,7 @@ pub fn get_devtools_rules() -> Vec<Box<dyn CleanRule>> {
         // Rust
         Box::new(CargoCacheRule),
         Box::new(CargoTargetRule),
+        Box::new(RustupCacheRule),
         // Go
         Box::new(GoCacheRule),
         // Java
@@ -27,6 +31,15 @@ pub fn get_devtools_rules() -> Vec<Box<dyn CleanRule>> {
         Box::new(AndroidCacheRule),
         // Docker
         Box::new(DockerCacheRule),
+        // IDE & Editors
+        Box::new(VSCodeCacheRule),
+        Box::new(CursorCacheRule),
+        Box::new(JetBrainsCacheRule),
+        // Mobile
+        Box::new(FlutterCacheRule),
+        Box::new(DartPubCacheRule),
+        // Ruby
+        Box::new(RubyCacheRule),
     ]
 }
 
@@ -968,3 +981,657 @@ fn parse_size(s: &str) -> Option<u64> {
 
     num_part.trim().parse::<f64>().ok().map(|n| (n * unit as f64) as u64)
 }
+
+// ============ IDE & Editor Rules ============
+
+/// VSCode cache rule
+pub struct VSCodeCacheRule;
+
+impl CleanRule for VSCodeCacheRule {
+    fn name(&self) -> &str {
+        "VS Code Cache"
+    }
+
+    fn category(&self) -> Category {
+        Category::Other("IDE".to_string())
+    }
+
+    fn risk_level(&self) -> RiskLevel {
+        RiskLevel::Low
+    }
+
+    fn description(&self) -> &str {
+        "VS Code extensions cache and logs"
+    }
+
+    fn is_applicable(&self) -> bool {
+        self.scan_paths().iter().any(|p| p.exists())
+    }
+
+    fn scan_paths(&self) -> Vec<PathBuf> {
+        let mut paths = Vec::new();
+        if let Some(home) = dirs::home_dir() {
+            paths.push(home.join(".vscode/extensions"));
+            paths.push(home.join("Library/Application Support/Code/Cache"));
+            paths.push(home.join("Library/Application Support/Code/CachedData"));
+            paths.push(home.join("Library/Application Support/Code/CachedExtensions"));
+            paths.push(home.join("Library/Application Support/Code/logs"));
+            paths.push(home.join("Library/Caches/com.microsoft.VSCode"));
+        }
+        paths
+    }
+
+    fn scan(&self) -> anyhow::Result<Vec<CleanItem>> {
+        let mut items = Vec::new();
+        for path in self.scan_paths() {
+            if path.exists() {
+                let size = dir_size(&path);
+                if size > 10 * 1024 * 1024 {
+                    let is_extensions = path.to_string_lossy().contains("extensions");
+                    let desc = if is_extensions {
+                        "VS Code extensions (consider cleaning unused)"
+                    } else if path.to_string_lossy().contains("logs") {
+                        "VS Code logs"
+                    } else {
+                        "VS Code cache"
+                    };
+                    items.push(CleanItem::new(
+                        path,
+                        size,
+                        desc,
+                        if is_extensions {
+                            RiskLevel::Medium
+                        } else {
+                            self.risk_level()
+                        },
+                        self.category(),
+                    ));
+                }
+            }
+        }
+        Ok(items)
+    }
+
+    fn clean(&self, items: &[CleanItem], to_trash: bool) -> anyhow::Result<CleanResult> {
+        clean_items(items, to_trash)
+    }
+}
+
+/// Cursor IDE cache rule
+pub struct CursorCacheRule;
+
+impl CleanRule for CursorCacheRule {
+    fn name(&self) -> &str {
+        "Cursor Cache"
+    }
+
+    fn category(&self) -> Category {
+        Category::Other("IDE".to_string())
+    }
+
+    fn risk_level(&self) -> RiskLevel {
+        RiskLevel::Low
+    }
+
+    fn description(&self) -> &str {
+        "Cursor AI IDE cache and logs"
+    }
+
+    fn is_applicable(&self) -> bool {
+        self.scan_paths().iter().any(|p| p.exists())
+    }
+
+    fn scan_paths(&self) -> Vec<PathBuf> {
+        let mut paths = Vec::new();
+        if let Some(home) = dirs::home_dir() {
+            paths.push(home.join(".cursor/extensions"));
+            paths.push(home.join("Library/Application Support/Cursor/Cache"));
+            paths.push(home.join("Library/Application Support/Cursor/CachedData"));
+            paths.push(home.join("Library/Application Support/Cursor/logs"));
+            paths.push(home.join("Library/Caches/com.todesktop.230313mzl4w4u92"));
+        }
+        paths
+    }
+
+    fn scan(&self) -> anyhow::Result<Vec<CleanItem>> {
+        let mut items = Vec::new();
+        for path in self.scan_paths() {
+            if path.exists() {
+                let size = dir_size(&path);
+                if size > 10 * 1024 * 1024 {
+                    let is_extensions = path.to_string_lossy().contains("extensions");
+                    let desc = if is_extensions {
+                        "Cursor extensions"
+                    } else if path.to_string_lossy().contains("logs") {
+                        "Cursor logs"
+                    } else {
+                        "Cursor cache"
+                    };
+                    items.push(CleanItem::new(
+                        path,
+                        size,
+                        desc,
+                        if is_extensions {
+                            RiskLevel::Medium
+                        } else {
+                            self.risk_level()
+                        },
+                        self.category(),
+                    ));
+                }
+            }
+        }
+        Ok(items)
+    }
+
+    fn clean(&self, items: &[CleanItem], to_trash: bool) -> anyhow::Result<CleanResult> {
+        clean_items(items, to_trash)
+    }
+}
+
+/// JetBrains IDEs cache rule
+pub struct JetBrainsCacheRule;
+
+impl CleanRule for JetBrainsCacheRule {
+    fn name(&self) -> &str {
+        "JetBrains Cache"
+    }
+
+    fn category(&self) -> Category {
+        Category::Other("IDE".to_string())
+    }
+
+    fn risk_level(&self) -> RiskLevel {
+        RiskLevel::Low
+    }
+
+    fn description(&self) -> &str {
+        "JetBrains IDEs cache (IntelliJ, WebStorm, PyCharm, etc.)"
+    }
+
+    fn is_applicable(&self) -> bool {
+        self.scan_paths().iter().any(|p| p.exists())
+    }
+
+    fn scan_paths(&self) -> Vec<PathBuf> {
+        let mut paths = Vec::new();
+        if let Some(home) = dirs::home_dir() {
+            // Look for JetBrains cache directories
+            let cache_base = home.join("Library/Caches/JetBrains");
+            if cache_base.exists() {
+                paths.push(cache_base);
+            }
+            // Also check for individual IDE caches
+            let ides = ["IntelliJIdea", "WebStorm", "PyCharm", "CLion", "GoLand", "RustRover", "DataGrip"];
+            for ide in &ides {
+                let pattern = home.join(format!("Library/Caches/{}", ide));
+                if pattern.exists() {
+                    paths.push(pattern);
+                }
+            }
+        }
+        paths
+    }
+
+    fn scan(&self) -> anyhow::Result<Vec<CleanItem>> {
+        let mut items = Vec::new();
+        for path in self.scan_paths() {
+            if path.exists() {
+                let size = dir_size(&path);
+                if size > 50 * 1024 * 1024 {
+                    items.push(CleanItem::new(
+                        path,
+                        size,
+                        "JetBrains IDE cache",
+                        self.risk_level(),
+                        self.category(),
+                    ));
+                }
+            }
+        }
+        Ok(items)
+    }
+
+    fn clean(&self, items: &[CleanItem], to_trash: bool) -> anyhow::Result<CleanResult> {
+        clean_items(items, to_trash)
+    }
+}
+
+// ============ Mobile Development Rules ============
+
+/// Flutter cache rule
+pub struct FlutterCacheRule;
+
+impl CleanRule for FlutterCacheRule {
+    fn name(&self) -> &str {
+        "Flutter Cache"
+    }
+
+    fn category(&self) -> Category {
+        Category::Other("Mobile".to_string())
+    }
+
+    fn risk_level(&self) -> RiskLevel {
+        RiskLevel::Low
+    }
+
+    fn description(&self) -> &str {
+        "Flutter SDK cache and artifacts"
+    }
+
+    fn is_applicable(&self) -> bool {
+        self.scan_paths().iter().any(|p| p.exists())
+    }
+
+    fn scan_paths(&self) -> Vec<PathBuf> {
+        let mut paths = Vec::new();
+        if let Some(home) = dirs::home_dir() {
+            paths.push(home.join("flutter/bin/cache"));
+            paths.push(home.join(".flutter"));
+            paths.push(home.join("development/flutter/bin/cache"));
+        }
+        // Check FLUTTER_ROOT if set
+        if let Ok(flutter_root) = std::env::var("FLUTTER_ROOT") {
+            paths.push(PathBuf::from(flutter_root).join("bin/cache"));
+        }
+        paths
+    }
+
+    fn scan(&self) -> anyhow::Result<Vec<CleanItem>> {
+        let mut items = Vec::new();
+        for path in self.scan_paths() {
+            if path.exists() {
+                let size = dir_size(&path);
+                if size > 100 * 1024 * 1024 {
+                    items.push(CleanItem::new(
+                        path,
+                        size,
+                        "Flutter SDK cache",
+                        self.risk_level(),
+                        self.category(),
+                    ));
+                }
+            }
+        }
+        Ok(items)
+    }
+
+    fn clean(&self, items: &[CleanItem], to_trash: bool) -> anyhow::Result<CleanResult> {
+        clean_items(items, to_trash)
+    }
+}
+
+/// Dart pub cache rule
+pub struct DartPubCacheRule;
+
+impl CleanRule for DartPubCacheRule {
+    fn name(&self) -> &str {
+        "Dart Pub Cache"
+    }
+
+    fn category(&self) -> Category {
+        Category::Other("Mobile".to_string())
+    }
+
+    fn risk_level(&self) -> RiskLevel {
+        RiskLevel::Low
+    }
+
+    fn description(&self) -> &str {
+        "Dart package manager cache"
+    }
+
+    fn is_applicable(&self) -> bool {
+        self.scan_paths().iter().any(|p| p.exists())
+    }
+
+    fn scan_paths(&self) -> Vec<PathBuf> {
+        let mut paths = Vec::new();
+        if let Some(home) = dirs::home_dir() {
+            paths.push(home.join(".pub-cache"));
+        }
+        // Check PUB_CACHE if set
+        if let Ok(pub_cache) = std::env::var("PUB_CACHE") {
+            paths.push(PathBuf::from(pub_cache));
+        }
+        paths
+    }
+
+    fn scan(&self) -> anyhow::Result<Vec<CleanItem>> {
+        let mut items = Vec::new();
+        for path in self.scan_paths() {
+            if path.exists() {
+                let size = dir_size(&path);
+                if size > 50 * 1024 * 1024 {
+                    items.push(CleanItem::new(
+                        path,
+                        size,
+                        "Dart pub cache",
+                        self.risk_level(),
+                        self.category(),
+                    ));
+                }
+            }
+        }
+        Ok(items)
+    }
+
+    fn clean(&self, items: &[CleanItem], to_trash: bool) -> anyhow::Result<CleanResult> {
+        clean_items(items, to_trash)
+    }
+}
+
+// ============ Additional Node.js Tools ============
+
+/// nvm cache rule
+pub struct NvmCacheRule;
+
+impl CleanRule for NvmCacheRule {
+    fn name(&self) -> &str {
+        "nvm Cache"
+    }
+
+    fn category(&self) -> Category {
+        Category::NodeJs
+    }
+
+    fn risk_level(&self) -> RiskLevel {
+        RiskLevel::Medium
+    }
+
+    fn description(&self) -> &str {
+        "Node Version Manager installed versions"
+    }
+
+    fn is_applicable(&self) -> bool {
+        self.scan_paths().iter().any(|p| p.exists())
+    }
+
+    fn scan_paths(&self) -> Vec<PathBuf> {
+        let mut paths = Vec::new();
+        if let Some(home) = dirs::home_dir() {
+            paths.push(home.join(".nvm/versions"));
+            paths.push(home.join(".nvm/.cache"));
+        }
+        paths
+    }
+
+    fn scan(&self) -> anyhow::Result<Vec<CleanItem>> {
+        let mut items = Vec::new();
+        for path in self.scan_paths() {
+            if path.exists() {
+                let size = dir_size(&path);
+                if size > 100 * 1024 * 1024 {
+                    let desc = if path.to_string_lossy().contains(".cache") {
+                        "nvm download cache"
+                    } else {
+                        "nvm Node.js versions (keep versions you use)"
+                    };
+                    items.push(CleanItem::new(
+                        path,
+                        size,
+                        desc,
+                        self.risk_level(),
+                        self.category(),
+                    ));
+                }
+            }
+        }
+        Ok(items)
+    }
+
+    fn clean(&self, items: &[CleanItem], to_trash: bool) -> anyhow::Result<CleanResult> {
+        clean_items(items, to_trash)
+    }
+}
+
+/// Bun cache rule
+pub struct BunCacheRule;
+
+impl CleanRule for BunCacheRule {
+    fn name(&self) -> &str {
+        "Bun Cache"
+    }
+
+    fn category(&self) -> Category {
+        Category::NodeJs
+    }
+
+    fn risk_level(&self) -> RiskLevel {
+        RiskLevel::Low
+    }
+
+    fn description(&self) -> &str {
+        "Bun package manager cache"
+    }
+
+    fn is_applicable(&self) -> bool {
+        self.scan_paths().iter().any(|p| p.exists())
+    }
+
+    fn scan_paths(&self) -> Vec<PathBuf> {
+        let mut paths = Vec::new();
+        if let Some(home) = dirs::home_dir() {
+            paths.push(home.join(".bun/install/cache"));
+        }
+        paths
+    }
+
+    fn scan(&self) -> anyhow::Result<Vec<CleanItem>> {
+        let mut items = Vec::new();
+        for path in self.scan_paths() {
+            if path.exists() {
+                let size = dir_size(&path);
+                if size > 50 * 1024 * 1024 {
+                    items.push(CleanItem::new(
+                        path,
+                        size,
+                        "Bun package cache",
+                        self.risk_level(),
+                        self.category(),
+                    ));
+                }
+            }
+        }
+        Ok(items)
+    }
+
+    fn clean(&self, items: &[CleanItem], to_trash: bool) -> anyhow::Result<CleanResult> {
+        clean_items(items, to_trash)
+    }
+}
+
+/// Deno cache rule
+pub struct DenoCacheRule;
+
+impl CleanRule for DenoCacheRule {
+    fn name(&self) -> &str {
+        "Deno Cache"
+    }
+
+    fn category(&self) -> Category {
+        Category::NodeJs
+    }
+
+    fn risk_level(&self) -> RiskLevel {
+        RiskLevel::Low
+    }
+
+    fn description(&self) -> &str {
+        "Deno runtime cache"
+    }
+
+    fn is_applicable(&self) -> bool {
+        self.scan_paths().iter().any(|p| p.exists())
+    }
+
+    fn scan_paths(&self) -> Vec<PathBuf> {
+        let mut paths = Vec::new();
+        if let Some(cache) = dirs::cache_dir() {
+            paths.push(cache.join("deno"));
+        }
+        if let Some(home) = dirs::home_dir() {
+            paths.push(home.join(".deno"));
+            paths.push(home.join("Library/Caches/deno"));
+        }
+        paths
+    }
+
+    fn scan(&self) -> anyhow::Result<Vec<CleanItem>> {
+        let mut items = Vec::new();
+        for path in self.scan_paths() {
+            if path.exists() {
+                let size = dir_size(&path);
+                if size > 50 * 1024 * 1024 {
+                    items.push(CleanItem::new(
+                        path,
+                        size,
+                        "Deno cache",
+                        self.risk_level(),
+                        self.category(),
+                    ));
+                }
+            }
+        }
+        Ok(items)
+    }
+
+    fn clean(&self, items: &[CleanItem], to_trash: bool) -> anyhow::Result<CleanResult> {
+        clean_items(items, to_trash)
+    }
+}
+
+// ============ Rustup Rule ============
+
+/// Rustup cache rule
+pub struct RustupCacheRule;
+
+impl CleanRule for RustupCacheRule {
+    fn name(&self) -> &str {
+        "Rustup Toolchains"
+    }
+
+    fn category(&self) -> Category {
+        Category::Rust
+    }
+
+    fn risk_level(&self) -> RiskLevel {
+        RiskLevel::Medium
+    }
+
+    fn description(&self) -> &str {
+        "Rustup installed toolchains and components"
+    }
+
+    fn is_applicable(&self) -> bool {
+        self.scan_paths().iter().any(|p| p.exists())
+    }
+
+    fn scan_paths(&self) -> Vec<PathBuf> {
+        let mut paths = Vec::new();
+        if let Some(home) = dirs::home_dir() {
+            paths.push(home.join(".rustup/toolchains"));
+            paths.push(home.join(".rustup/downloads"));
+            paths.push(home.join(".rustup/tmp"));
+        }
+        paths
+    }
+
+    fn scan(&self) -> anyhow::Result<Vec<CleanItem>> {
+        let mut items = Vec::new();
+        for path in self.scan_paths() {
+            if path.exists() {
+                let size = dir_size(&path);
+                if size > 500 * 1024 * 1024 {
+                    let desc = if path.to_string_lossy().contains("toolchains") {
+                        "Rustup toolchains (keep versions you use)"
+                    } else if path.to_string_lossy().contains("downloads") {
+                        "Rustup downloads cache"
+                    } else {
+                        "Rustup temporary files"
+                    };
+                    items.push(CleanItem::new(
+                        path,
+                        size,
+                        desc,
+                        self.risk_level(),
+                        self.category(),
+                    ));
+                }
+            }
+        }
+        Ok(items)
+    }
+
+    fn clean(&self, items: &[CleanItem], to_trash: bool) -> anyhow::Result<CleanResult> {
+        clean_items(items, to_trash)
+    }
+}
+
+// ============ Ruby Rule ============
+
+/// Ruby cache rule
+pub struct RubyCacheRule;
+
+impl CleanRule for RubyCacheRule {
+    fn name(&self) -> &str {
+        "Ruby Gems Cache"
+    }
+
+    fn category(&self) -> Category {
+        Category::Other("Ruby".to_string())
+    }
+
+    fn risk_level(&self) -> RiskLevel {
+        RiskLevel::Low
+    }
+
+    fn description(&self) -> &str {
+        "Ruby gems and bundle cache"
+    }
+
+    fn is_applicable(&self) -> bool {
+        self.scan_paths().iter().any(|p| p.exists())
+    }
+
+    fn scan_paths(&self) -> Vec<PathBuf> {
+        let mut paths = Vec::new();
+        if let Some(home) = dirs::home_dir() {
+            paths.push(home.join(".gem"));
+            paths.push(home.join(".bundle/cache"));
+            paths.push(home.join(".rbenv/versions"));
+        }
+        paths
+    }
+
+    fn scan(&self) -> anyhow::Result<Vec<CleanItem>> {
+        let mut items = Vec::new();
+        for path in self.scan_paths() {
+            if path.exists() {
+                let size = dir_size(&path);
+                if size > 100 * 1024 * 1024 {
+                    let desc = if path.to_string_lossy().contains("rbenv") {
+                        "rbenv Ruby versions"
+                    } else if path.to_string_lossy().contains("bundle") {
+                        "Bundler cache"
+                    } else {
+                        "Ruby gems cache"
+                    };
+                    items.push(CleanItem::new(
+                        path,
+                        size,
+                        desc,
+                        self.risk_level(),
+                        self.category(),
+                    ));
+                }
+            }
+        }
+        Ok(items)
+    }
+
+    fn clean(&self, items: &[CleanItem], to_trash: bool) -> anyhow::Result<CleanResult> {
+        clean_items(items, to_trash)
+    }
+}
+

@@ -128,6 +128,12 @@ pub enum Commands {
         #[arg(long)]
         path: Option<String>,
     },
+
+    /// Launch interactive TUI mode
+    ///
+    /// Opens a modern terminal user interface for interactive cleaning.
+    #[command(visible_alias = "ui")]
+    Tui,
 }
 
 /// Output format options

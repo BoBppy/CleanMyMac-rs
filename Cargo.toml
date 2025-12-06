@@ -7,7 +7,7 @@ license = "MIT"
 authors = ["CleanMyMac-rs Contributors"]
 rust-version = "1.85"
 readme = "README.md"
-repository = "https://github.com/user/cleanmymac-rs"
+repository = "https://github.com/BoBppy/CleanMyMac-rs"
 keywords = ["cleaner", "cache", "macos", "linux", "cli"]
 categories = ["command-line-utilities", "filesystem"]
 
@@ -23,6 +23,10 @@ trash = "5"
 
 # System info
 sysinfo = "0.32"
+
+# TUI
+ratatui = "0.29"
+crossterm = "0.28"
 
 # Serialization
 serde = { version = "1", features = ["derive"] }

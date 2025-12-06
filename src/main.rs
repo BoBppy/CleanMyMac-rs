@@ -8,7 +8,7 @@ use cleanmymac_rs::{
     config::Config,
     rules::{get_all_rules, get_rules_by_category},
     scanner::{FileScanner, ScanSummary, StorageAnalyzer},
-    ui::{Cli, Commands, OutputFormat},
+    ui::{tui::App, Cli, Commands, OutputFormat},
 };
 use colored::*;
 use dialoguer::Confirm;
@@ -68,6 +68,9 @@ fn main() -> anyhow::Result<()> {
         }
         Commands::Config { init, show, path } => {
             run_config(init, show, path)?;
+        }
+        Commands::Tui => {
+            run_tui()?;
         }
     }
 
@@ -385,5 +388,12 @@ fn run_config(init: bool, show: bool, path: Option<String>) -> anyhow::Result<()
         println!("  {} Initialize at custom path", "cleanmymac-rs config --init --path <PATH>".cyan());
     }
 
+    Ok(())
+}
+
+/// Run TUI mode
+fn run_tui() -> anyhow::Result<()> {
+    let mut app = App::new();
+    app.run()?;
     Ok(())
 }
