@@ -580,10 +580,17 @@ impl App {
         frame.render_widget(paragraph, area);
     }
 
-    /// Render stats tab
+    /// Render stats tab with visual bar chart
     fn render_stats_tab(&self, frame: &mut Frame, area: Rect) {
         use std::collections::HashMap;
 
+        // Split area into two columns
+        let chunks = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+            .split(area);
+
+        // Left panel: Category breakdown with bar chart
         let mut by_category: HashMap<String, u64> = HashMap::new();
         for item in &self.items {
             *by_category.entry(item.category.to_string()).or_insert(0) += item.size;
@@ -595,28 +602,16 @@ impl App {
             Line::from(""),
             Line::from(vec![
                 Span::styled("📊 ", Style::default()),
-                Span::styled("Storage Analysis", Style::default().fg(Color::Cyan).bold()),
+                Span::styled("Storage by Category", Style::default().fg(Color::Cyan).bold()),
             ]),
             Line::from(""),
             Line::from(vec![
-                Span::styled("Total cleanable: ", Style::default().fg(Color::Gray)),
+                Span::styled("Total: ", Style::default().fg(Color::Gray)),
                 Span::styled(
                     format_bytes(total_size),
                     Style::default().fg(Color::Green).bold(),
                 ),
-            ]),
-            Line::from(vec![
-                Span::styled("Items found: ", Style::default().fg(Color::Gray)),
-                Span::styled(
-                    format!("{}", self.items.len()),
-                    Style::default().fg(Color::Yellow),
-                ),
-            ]),
-            Line::from(""),
-            Line::from("─".repeat(40)),
-            Line::from(""),
-            Line::from(vec![
-                Span::styled("By Category:", Style::default().fg(Color::Cyan).bold()),
+                Span::styled(format!(" ({} items)", self.items.len()), Style::default().fg(Color::Gray)),
             ]),
             Line::from(""),
         ];
@@ -624,38 +619,163 @@ impl App {
         let mut categories: Vec<_> = by_category.iter().collect();
         categories.sort_by(|a, b| b.1.cmp(a.1));
 
-        for (category, size) in categories {
+        let max_size = categories.first().map(|(_, s)| **s).unwrap_or(1);
+        let bar_width = 20;
+
+        // Color palette for categories
+        let colors = [
+            Color::Cyan, Color::Green, Color::Yellow, Color::Magenta, 
+            Color::Blue, Color::Red, Color::LightCyan, Color::LightGreen,
+        ];
+
+        for (i, (category, size)) in categories.iter().enumerate() {
             let percentage = if total_size > 0 {
-                (*size as f64 / total_size as f64 * 100.0) as u16
+                (**size as f64 / total_size as f64 * 100.0) as u16
             } else {
                 0
             };
+            
+            // Calculate bar length
+            let bar_len = if max_size > 0 {
+                ((**size as f64 / max_size as f64) * bar_width as f64) as usize
+            } else {
+                0
+            };
+            
+            let bar = "█".repeat(bar_len);
+            let empty = "░".repeat(bar_width - bar_len);
+            let color = colors[i % colors.len()];
+
             content.push(Line::from(vec![
-                Span::styled(format!("  {:<20} ", category), Style::default().fg(Color::White)),
-                Span::styled(
-                    format!("{:>10} ", format_bytes(*size)),
-                    Style::default().fg(Color::Yellow),
-                ),
-                Span::styled(
-                    format!("({:>3}%)", percentage),
-                    Style::default().fg(Color::Gray),
-                ),
+                Span::styled(format!("{:<12} ", category), Style::default().fg(Color::White)),
+            ]));
+            content.push(Line::from(vec![
+                Span::styled("  ", Style::default()),
+                Span::styled(bar, Style::default().fg(color)),
+                Span::styled(empty, Style::default().fg(Color::DarkGray)),
+                Span::styled(format!(" {:>8} ", format_bytes(**size)), Style::default().fg(Color::Yellow)),
+                Span::styled(format!("{:>3}%", percentage), Style::default().fg(Color::Gray)),
             ]));
         }
 
-        let paragraph = Paragraph::new(content)
+        let left_panel = Paragraph::new(content)
             .block(
                 Block::default()
-                    .title(" 📊 Statistics ")
+                    .title(" 📊 Category Analysis ")
                     .title_style(Style::default().fg(Color::Cyan).bold())
                     .borders(Borders::ALL)
                     .border_type(BorderType::Rounded)
                     .border_style(Style::default().fg(Color::DarkGray))
-                    .padding(Padding::new(2, 2, 1, 1)),
+                    .padding(Padding::new(1, 1, 0, 0)),
             )
             .wrap(Wrap { trim: true });
 
-        frame.render_widget(paragraph, area);
+        frame.render_widget(left_panel, chunks[0]);
+
+        // Right panel: Top items and summary
+        let mut right_content = vec![
+            Line::from(""),
+            Line::from(vec![
+                Span::styled("📁 ", Style::default()),
+                Span::styled("Top Items by Size", Style::default().fg(Color::Cyan).bold()),
+            ]),
+            Line::from(""),
+        ];
+
+        // Show top 10 items
+        let mut sorted_items: Vec<_> = self.items.iter().collect();
+        sorted_items.sort_by(|a, b| b.size.cmp(&a.size));
+
+        for (i, item) in sorted_items.iter().take(10).enumerate() {
+            let name = item.path
+                .file_name()
+                .map(|n| n.to_string_lossy().to_string())
+                .unwrap_or_else(|| "unknown".to_string());
+            
+            let name_short = if name.len() > 20 {
+                format!("{}...", &name[..17])
+            } else {
+                name
+            };
+
+            let percentage = if total_size > 0 {
+                (item.size as f64 / total_size as f64 * 100.0) as u16
+            } else {
+                0
+            };
+
+            let color = match i {
+                0 => Color::Red,
+                1 => Color::Yellow,
+                2 => Color::Green,
+                _ => Color::White,
+            };
+
+            right_content.push(Line::from(vec![
+                Span::styled(format!("{:>2}. ", i + 1), Style::default().fg(Color::Gray)),
+                Span::styled(format!("{:<20} ", name_short), Style::default().fg(color)),
+                Span::styled(format!("{:>8}", format_bytes(item.size)), Style::default().fg(Color::Yellow)),
+                Span::styled(format!(" {:>2}%", percentage), Style::default().fg(Color::Gray)),
+            ]));
+        }
+
+        // Add disk usage visualization
+        right_content.push(Line::from(""));
+        right_content.push(Line::from("─".repeat(35)));
+        right_content.push(Line::from(""));
+        right_content.push(Line::from(vec![
+            Span::styled("💾 ", Style::default()),
+            Span::styled("Disk Space Reclaimable", Style::default().fg(Color::Cyan).bold()),
+        ]));
+        right_content.push(Line::from(""));
+        
+        // Create a simple visualization of space
+        let segments: usize = 30;
+        let mut usage_bar = String::new();
+        let category_segments: Vec<_> = categories.iter()
+            .take(5)
+            .map(|(_, size)| {
+                if total_size > 0 {
+                    ((**size as f64 / total_size as f64) * segments as f64) as usize
+                } else {
+                    0
+                }
+            })
+            .collect();
+        
+        let mut used = 0;
+        for (i, &seg) in category_segments.iter().enumerate() {
+            let symbol = match i {
+                0 => "█",
+                1 => "▓",
+                2 => "▒",
+                3 => "░",
+                _ => "·",
+            };
+            usage_bar.push_str(&symbol.repeat(seg));
+            used += seg;
+        }
+        usage_bar.push_str(&"·".repeat(segments.saturating_sub(used)));
+
+        right_content.push(Line::from(vec![
+            Span::styled("[", Style::default().fg(Color::Gray)),
+            Span::styled(&usage_bar[..usage_bar.len().min(30)], Style::default().fg(Color::Cyan)),
+            Span::styled("]", Style::default().fg(Color::Gray)),
+        ]));
+
+        let right_panel = Paragraph::new(right_content)
+            .block(
+                Block::default()
+                    .title(" � Size Analysis ")
+                    .title_style(Style::default().fg(Color::Cyan).bold())
+                    .borders(Borders::ALL)
+                    .border_type(BorderType::Rounded)
+                    .border_style(Style::default().fg(Color::DarkGray))
+                    .padding(Padding::new(1, 1, 0, 0)),
+            )
+            .wrap(Wrap { trim: true });
+
+        frame.render_widget(right_panel, chunks[1]);
     }
 
     /// Render settings tab
