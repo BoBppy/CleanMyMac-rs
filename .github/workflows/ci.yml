@@ -67,6 +67,8 @@ jobs:
             artifact_name: cleanmymac-rs-linux-x86_64
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
