@@ -34,8 +34,7 @@ fn clean_items(items: &[CleanItem], to_trash: bool) -> anyhow::Result<CleanResul
 
     for item in items {
         let clean_result = if to_trash {
-            trash::delete(&item.path)
-                .map_err(|e| std::io::Error::other(e.to_string()))
+            trash::delete(&item.path).map_err(|e| std::io::Error::other(e.to_string()))
         } else if item.path.is_dir() {
             std::fs::remove_dir_all(&item.path)
         } else {
