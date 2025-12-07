@@ -6,9 +6,11 @@ use clap::{Parser, Subcommand, ValueEnum};
 ///
 /// A powerful tool for cleaning caches, temporary files, and development artifacts
 /// on macOS and Linux systems. Built with Rust for performance and safety.
+///
+/// Tip: Run 'cleanmymac-rs <COMMAND> --help' for detailed usage options.
 #[derive(Parser, Debug)]
 #[command(name = "cleanmymac-rs")]
-#[command(author, version = env!("GIT_VERSION"), about, long_about = None)]
+#[command(author, version = env!("GIT_VERSION"), about)]
 #[command(propagate_version = true)]
 pub struct Cli {
     /// Subcommand to run
@@ -73,6 +75,10 @@ pub enum Commands {
         /// Permanently delete instead of moving to trash
         #[arg(long)]
         permanent: bool,
+
+        /// Interactive mode (select items to clean)
+        #[arg(short = 'i', long)]
+        interactive: bool,
 
         /// Don't show progress bar
         #[arg(long)]

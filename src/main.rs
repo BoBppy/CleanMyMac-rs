@@ -56,9 +56,18 @@ fn main() -> anyhow::Result<()> {
             dry_run,
             yes,
             permanent,
+            interactive,
             quiet,
         } => {
-            run_clean(categories, dry_run, yes, permanent, quiet, &config)?;
+            run_clean(
+                categories,
+                dry_run,
+                yes,
+                permanent,
+                interactive,
+                quiet,
+                &config,
+            )?;
         }
         Commands::Analyze { path, depth, top } => {
             run_analyze(path, depth, top)?;
@@ -178,6 +187,7 @@ fn run_clean(
     dry_run: bool,
     yes: bool,
     permanent: bool,
+    interactive: bool,
     _quiet: bool,
     config: &Config,
 ) -> anyhow::Result<()> {
@@ -205,16 +215,54 @@ fn run_clean(
 
     cleaner.preview(&items);
 
+    // Filter items if interactive mode is enabled
+    let items_to_clean = if interactive {
+        println!(
+            "\n{}",
+            "👉 Select items to clean (Space to toggle, Enter to confirm):"
+                .cyan()
+                .bold()
+        );
+
+        let items_display: Vec<String> = items
+            .iter()
+            .map(|item| {
+                format!(
+                    "{} ({})",
+                    item.path.display(),
+                    bytesize::ByteSize::b(item.size)
+                )
+            })
+            .collect();
+
+        let selections = dialoguer::MultiSelect::new()
+            .with_prompt("Select items")
+            .items(&items_display)
+            .defaults(&vec![true; items.len()])
+            .interact()?;
+
+        if selections.is_empty() {
+            println!("\n{}", "❌ No items selected.".yellow());
+            return Ok(());
+        }
+
+        selections.iter().map(|&i| items[i].clone()).collect()
+    } else {
+        items
+    };
+
     // Confirm unless --yes was passed or dry run
     if !yes && !dry_run {
-        let total_size = bytesize::ByteSize::b(items.iter().map(|i| i.size).sum());
+        let total_size = bytesize::ByteSize::b(items_to_clean.iter().map(|i| i.size).sum());
         let confirm = Confirm::new()
             .with_prompt(format!(
                 "\nDo you want to clean {} items ({})? {}",
-                items.len(),
+                items_to_clean.len(),
                 total_size,
                 if permanent {
                     "(PERMANENT)"
+                } else if !config.general.use_trash {
+                    "(PERMANENT - Config)"
                 } else {
                     "(to trash)"
                 }
@@ -229,8 +277,8 @@ fn run_clean(
         }
     }
 
-    // Execute cleaning
-    let result = cleaner.clean(&items)?;
+    // Execute cleaning (using items_to_clean now)
+    let result = cleaner.clean(&items_to_clean)?;
 
     // Show results
     if result.cancelled {

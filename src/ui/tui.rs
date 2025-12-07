@@ -64,6 +64,13 @@ pub struct App {
     last_tick: Instant,
     /// Channel receiver for scan results
     scan_rx: Option<Receiver<ScanMessage>>,
+
+    // Settings state
+    settings_index: usize,
+    setting_use_trash: bool,
+    setting_confirm: bool,
+    setting_scan_hidden: bool,
+    setting_heuristic: bool,
 }
 
 impl Default for App {
@@ -83,6 +90,11 @@ impl Default for App {
             animation_frame: 0,
             last_tick: Instant::now(),
             scan_rx: None,
+            settings_index: 0,
+            setting_use_trash: true,
+            setting_confirm: true,
+            setting_scan_hidden: true,
+            setting_heuristic: true,
         }
     }
 }
@@ -222,15 +234,29 @@ impl App {
                     self.current_tab - 1
                 };
             }
-            KeyCode::Up | KeyCode::Char('k') => {
-                self.previous_item();
-            }
-            KeyCode::Down | KeyCode::Char('j') => {
-                self.next_item();
-            }
-            KeyCode::Char(' ') | KeyCode::Enter => {
-                self.toggle_selection();
-            }
+            KeyCode::Up | KeyCode::Char('k') => match self.current_tab {
+                0 => self.previous_item(),
+                2 => {
+                    if self.settings_index > 0 {
+                        self.settings_index -= 1;
+                    }
+                }
+                _ => {}
+            },
+            KeyCode::Down | KeyCode::Char('j') => match self.current_tab {
+                0 => self.next_item(),
+                2 => {
+                    if self.settings_index < 3 {
+                        self.settings_index += 1;
+                    }
+                }
+                _ => {}
+            },
+            KeyCode::Char(' ') | KeyCode::Enter => match self.current_tab {
+                0 => self.toggle_selection(),
+                2 => self.toggle_setting(),
+                _ => {}
+            },
             KeyCode::Char('?') => {
                 self.show_help = true;
             }
@@ -345,7 +371,9 @@ impl App {
         self.is_cleaning = true;
         self.status_message = String::from("🧹 Cleaning...");
 
-        let cleaner = Cleaner::new().use_trash(true).confirm_high_risk(false);
+        let cleaner = Cleaner::new()
+            .use_trash(self.setting_use_trash)
+            .confirm_high_risk(self.setting_confirm);
 
         match cleaner.clean(&selected_items) {
             Ok(result) => {
@@ -501,8 +529,10 @@ impl App {
 
                 let size_str = format_bytes(item.size);
                 let path_str = item.path.display().to_string();
-                let path_short = if path_str.len() > 50 {
-                    format!("...{}", &path_str[path_str.len() - 47..])
+                let path_short = if path_str.chars().count() > 50 {
+                    let chars: Vec<char> = path_str.chars().collect();
+                    let start = chars.len().saturating_sub(47);
+                    format!("...{}", chars[start..].iter().collect::<String>())
                 } else {
                     path_str
                 };
@@ -776,8 +806,9 @@ impl App {
                 .map(|n| n.to_string_lossy().to_string())
                 .unwrap_or_else(|| "unknown".to_string());
 
-            let name_short = if name.len() > 20 {
-                format!("{}...", &name[..17])
+            let name_short = if name.chars().count() > 20 {
+                let chars: Vec<char> = name.chars().collect();
+                format!("{}...", chars.into_iter().take(17).collect::<String>())
             } else {
                 name
             };
@@ -875,55 +906,68 @@ impl App {
         frame.render_widget(right_panel, chunks[1]);
     }
 
+    /// Toggle current setting
+    fn toggle_setting(&mut self) {
+        match self.settings_index {
+            0 => self.setting_use_trash = !self.setting_use_trash,
+            1 => self.setting_confirm = !self.setting_confirm,
+            2 => self.setting_scan_hidden = !self.setting_scan_hidden,
+            3 => self.setting_heuristic = !self.setting_heuristic,
+            _ => {}
+        }
+    }
+
     /// Render settings tab
     fn render_settings_tab(&self, frame: &mut Frame, area: Rect) {
-        let content = vec![
+        let settings = [
+            ("Move to Trash", self.setting_use_trash),
+            ("Confirm High-Risk Operations", self.setting_confirm),
+            ("Scan Hidden Files", self.setting_scan_hidden),
+            ("Heuristic Detection", self.setting_heuristic),
+        ];
+
+        let mut content = vec![
             Line::from(""),
             Line::from(vec![
                 Span::styled("⚙️  ", Style::default()),
                 Span::styled("Settings", Style::default().fg(Color::Cyan).bold()),
             ]),
             Line::from(""),
-            Line::from(vec![
-                Span::styled("  [", Style::default().fg(Color::Gray)),
-                Span::styled("✓", Style::default().fg(Color::Green)),
-                Span::styled("] Move to Trash", Style::default().fg(Color::White)),
-            ]),
-            Line::from(vec![
-                Span::styled("  [", Style::default().fg(Color::Gray)),
-                Span::styled("✓", Style::default().fg(Color::Green)),
-                Span::styled(
-                    "] Confirm High-Risk Operations",
-                    Style::default().fg(Color::White),
-                ),
-            ]),
-            Line::from(vec![
-                Span::styled("  [", Style::default().fg(Color::Gray)),
-                Span::styled("✓", Style::default().fg(Color::Green)),
-                Span::styled("] Scan Hidden Files", Style::default().fg(Color::White)),
-            ]),
-            Line::from(vec![
-                Span::styled("  [", Style::default().fg(Color::Gray)),
-                Span::styled("✓", Style::default().fg(Color::Green)),
-                Span::styled("] Heuristic Detection", Style::default().fg(Color::White)),
-            ]),
+        ];
+
+        for (i, (label, value)) in settings.iter().enumerate() {
+            let is_selected = i == self.settings_index;
+            let cursor = if is_selected { "▶ " } else { "  " };
+            let checkbox = if *value { "✓" } else { " " };
+            let color = if *value { Color::Green } else { Color::Red };
+
+            let style = if is_selected {
+                Style::default().bg(Color::DarkGray)
+            } else {
+                Style::default()
+            };
+
+            content.push(
+                Line::from(vec![
+                    Span::styled(cursor, Style::default().fg(Color::Cyan)),
+                    Span::styled("[", Style::default().fg(Color::Gray)),
+                    Span::styled(checkbox, Style::default().fg(color).bold()),
+                    Span::styled("] ", Style::default().fg(Color::Gray)),
+                    Span::styled(*label, Style::default().fg(Color::White)),
+                ])
+                .style(style),
+            );
+        }
+
+        content.extend(vec![
             Line::from(""),
             Line::from("─".repeat(40)),
             Line::from(""),
             Line::from(vec![Span::styled(
-                "Config file: ",
-                Style::default().fg(Color::Gray),
-            )]),
-            Line::from(vec![Span::styled(
-                "  ~/.config/cleanmymac-rs/config.toml",
-                Style::default().fg(Color::Yellow),
-            )]),
-            Line::from(""),
-            Line::from(vec![Span::styled(
-                "Tip: Edit the config file to customize behavior",
+                "Note: Settings reset on restart (Config file WIP)",
                 Style::default().fg(Color::Gray).italic(),
             )]),
-        ];
+        ]);
 
         let paragraph = Paragraph::new(content)
             .block(
