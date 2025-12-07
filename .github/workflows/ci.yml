@@ -56,6 +56,7 @@ jobs:
     name: Build Release
     needs: [test, fmt]
     runs-on: ${{ matrix.os }}
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     strategy:
       matrix:
         include:
@@ -91,9 +92,65 @@ jobs:
           PATCH=$((COMMIT_COUNT % 100))
           echo "VERSION=$MAJOR.$MINOR.$PATCH" >> $GITHUB_ENV
 
+      - name: Create archive
+        run: |
+          cd target/${{ matrix.target }}/release
+          tar -czvf ../../../${{ matrix.artifact_name }}.tar.gz cleanmymac-rs
+          cd ../../..
+
       - name: Archive production artifacts
         uses: actions/upload-artifact@v4
         with:
           name: cleanmymac-rs-${{ env.VERSION }}-${{ matrix.target }}
-          path: target/${{ matrix.target }}/release/cleanmymac-rs
+          path: ${{ matrix.artifact_name }}.tar.gz
           if-no-files-found: error
+
+  pre-release:
+    name: Create or Update Pre-Release
+    needs: build-release
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v6
+        with:
+          path: artifacts
+
+      - name: Calculate Version
+        id: version
+        run: |
+          COMMIT_COUNT=$(git rev-list --count HEAD)
+          MAJOR=$((1 + COMMIT_COUNT / 1000))
+          MINOR=$(((COMMIT_COUNT % 1000) / 100))
+          PATCH=$((COMMIT_COUNT % 100))
+          VERSION="$MAJOR.$MINOR.$PATCH"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+          echo "COMMIT_DATE=$(git log -1 --format=%ci)" >> $GITHUB_ENV
+
+      - name: Create or Update Pre-Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: nightly
+          name: "Pre-Release (Nightly Build)"
+          body: |
+            ## Nightly Build
+            
+            **Version:** ${{ env.VERSION }}
+            **Commit:** ${{ env.SHORT_SHA }}
+            **Date:** ${{ env.COMMIT_DATE }}
+            
+            This is an automatically generated pre-release build from the latest main branch.
+            
+            ### Recent Changes
+            ${{ github.event.head_commit.message }}
+          files: artifacts/**/*.tar.gz
+          prerelease: true
+          draft: false
+          make_latest: false
