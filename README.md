@@ -9,6 +9,7 @@ A cross-platform system cleaner for macOS and Linux, built with Rust for perform
 ## Features
 
 - 🚀 **High Performance** - Built with Rust, uses parallel scanning via rayon
+- 🖥️ **TUI Mode** - Interactive terminal interface with mouse support
 - 🍎 **macOS Support** - Homebrew, Xcode, CocoaPods, iOS Simulators, App caches
 - 🐧 **Linux Support** - APT, DNF, Pacman, Snap, Flatpak, systemd logs
 - 🔧 **Dev Tools** - npm, yarn, pip, uv, Cargo, Go, Gradle, Maven, Docker
@@ -45,6 +46,12 @@ cargo install --path .
 ```bash
 # Scan for cleanable files
 cleanmymac-rs scan
+
+# Interactive TUI mode (Recommended)
+cleanmymac-rs ui
+
+# Interactive Command Line mode
+cleanmymac-rs clean --interactive
 
 # Clean with confirmation
 cleanmymac-rs clean
@@ -84,6 +91,7 @@ cleanmymac-rs --help
 ## Configuration
 
 Initialize default configuration:
+
 ```bash
 cleanmymac-rs config --init
 ```
