@@ -18,6 +18,16 @@ A cross-platform system cleaner for macOS and Linux, built with Rust for perform
 
 ## Installation
 
+### Download Pre-built Binaries
+
+Download the latest nightly build from the [pre-release page](https://github.com/BoBppy/CleanMyMac-rs/releases/tag/nightly).
+
+Available platforms:
+- macOS (ARM64): `cleanmymac-rs-macos-aarch64.tar.gz`
+- Linux (x86_64): `cleanmymac-rs-linux-x86_64.tar.gz`
+
+### Build from Source
+
 ```bash
 # Clone the repository
 git clone https://github.com/BoBppy/CleanMyMac-rs.git
