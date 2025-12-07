@@ -149,7 +149,7 @@ impl TreemapBuilder {
                 .par_iter()
                 .filter_map(|entry| {
                     let child_path = entry.path();
-                    if depth + 1 <= self.max_depth {
+                    if depth < self.max_depth {
                         self.build_tree_recursive(&child_path, depth + 1).ok()
                     } else if child_path.is_dir() {
                         // For deep directories, just calculate total size
@@ -175,7 +175,7 @@ impl TreemapBuilder {
                 .iter()
                 .filter_map(|entry| {
                     let child_path = entry.path();
-                    if depth + 1 <= self.max_depth {
+                    if depth < self.max_depth {
                         self.build_tree_recursive(&child_path, depth + 1).ok()
                     } else if child_path.is_dir() {
                         let size = self.calculate_dir_size(&child_path);

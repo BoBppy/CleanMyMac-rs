@@ -25,6 +25,7 @@ const CACHE_PATTERNS: &[&str] = &[
 ];
 
 /// Patterns that indicate temporary files
+#[allow(dead_code)]
 const TEMP_EXTENSIONS: &[&str] = &[
     "tmp", "temp", "log", "bak", "old", "orig", "swp", "swo",
 ];
@@ -63,6 +64,7 @@ impl HeuristicRule {
     }
 
     /// Check if a file has a temporary extension
+    #[allow(dead_code)]
     fn is_temp_file(name: &str) -> bool {
         if let Some(ext) = name.rsplit('.').next() {
             TEMP_EXTENSIONS.contains(&ext.to_lowercase().as_str())
@@ -242,7 +244,7 @@ impl CleanRule for HeuristicRule {
         for item in items {
             let clean_result = if to_trash {
                 trash::delete(&item.path)
-                    .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))
+                    .map_err(|e| std::io::Error::other(e.to_string()))
             } else if item.path.is_dir() {
                 std::fs::remove_dir_all(&item.path)
             } else {

@@ -6,6 +6,7 @@ use std::path::PathBuf;
 /// Main configuration structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+#[derive(Default)]
 pub struct Config {
     /// General settings
     pub general: GeneralConfig,
@@ -19,17 +20,6 @@ pub struct Config {
     pub ignore: IgnoreConfig,
 }
 
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            general: GeneralConfig::default(),
-            categories: CategoryConfig::default(),
-            heuristic: HeuristicConfig::default(),
-            risk: RiskConfig::default(),
-            ignore: IgnoreConfig::default(),
-        }
-    }
-}
 
 /// General configuration options
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -124,16 +114,12 @@ impl Default for RiskConfig {
 /// Ignore configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+#[derive(Default)]
 pub struct IgnoreConfig {
     /// Paths to ignore during scanning
     pub paths: Vec<PathBuf>,
 }
 
-impl Default for IgnoreConfig {
-    fn default() -> Self {
-        Self { paths: Vec::new() }
-    }
-}
 
 impl Config {
     /// Load configuration from a TOML file
@@ -186,7 +172,7 @@ impl Config {
     }
 
     /// Save configuration to a path
-    pub fn save_to(&self, path: &std::path::PathBuf) -> crate::Result<()> {
-        self.save(path.as_path())
+    pub fn save_to(&self, path: &std::path::Path) -> crate::Result<()> {
+        self.save(path)
     }
 }

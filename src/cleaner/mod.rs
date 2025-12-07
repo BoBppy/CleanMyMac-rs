@@ -127,7 +127,7 @@ impl Cleaner {
 
             let clean_result = if self.use_trash {
                 trash::delete(&item.path)
-                    .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))
+                    .map_err(|e| std::io::Error::other(e.to_string()))
             } else if item.path.is_dir() {
                 std::fs::remove_dir_all(&item.path)
             } else {
@@ -178,11 +178,11 @@ impl Cleaner {
             );
 
             for item in cat_items.iter().take(5) {
-                let risk_color = match item.risk_level {
-                    RiskLevel::Low => "green",
-                    RiskLevel::Medium => "yellow",
-                    RiskLevel::High => "red",
-                };
+                // let risk_color = match item.risk_level {
+                //     RiskLevel::Low => "green",
+                //     RiskLevel::Medium => "yellow",
+                //     RiskLevel::High => "red",
+                // };
                 println!(
                     "    {} {} ({})",
                     match item.risk_level {
