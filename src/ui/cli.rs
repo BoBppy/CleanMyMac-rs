@@ -8,7 +8,7 @@ use clap::{Parser, Subcommand, ValueEnum};
 /// on macOS and Linux systems. Built with Rust for performance and safety.
 #[derive(Parser, Debug)]
 #[command(name = "cleanmymac-rs")]
-#[command(author, version, about, long_about = None)]
+#[command(author, version = env!("GIT_VERSION"), about, long_about = None)]
 #[command(propagate_version = true)]
 pub struct Cli {
     /// Subcommand to run

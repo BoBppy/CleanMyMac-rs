@@ -1,6 +1,6 @@
 [package]
 name = "cleanmymac-rs"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2024"
 description = "A cross-platform system cleaner for macOS and Linux"
 license = "MIT"

@@ -42,10 +42,19 @@ jobs:
           tar -czvf ../../../${{ matrix.artifact_name }}.tar.gz cleanmymac-rs
           cd ../../..
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v5
+      - name: Calculate Version
+        id: version
+        run: |
+          COMMIT_COUNT=$(git rev-list --count HEAD)
+          MAJOR=$((1 + COMMIT_COUNT / 1000))
+          MINOR=$(((COMMIT_COUNT % 1000) / 100))
+          PATCH=$((COMMIT_COUNT % 100))
+          echo "VERSION=$MAJOR.$MINOR.$PATCH" >> $GITHUB_ENV
+
+      - name: Archive production artifacts
+        uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact_name }}
+          name: cleanmymac-rs-${{ env.VERSION }}-${{ matrix.target }}
           path: ${{ matrix.artifact_name }}.tar.gz
 
   release:
