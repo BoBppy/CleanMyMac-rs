@@ -1,9 +1,9 @@
 //! Cleaner module for executing cleanup operations
 
 use crate::rules::{CleanItem, CleanResult, RiskLevel};
+use colored::*;
 use dialoguer::Confirm;
 use indicatif::{ProgressBar, ProgressStyle};
-use colored::*;
 
 /// Cleaner for executing cleanup operations
 pub struct Cleaner {
@@ -118,16 +118,23 @@ impl Cleaner {
         let pb = ProgressBar::new(items.len() as u64);
         pb.set_style(
             ProgressStyle::default_bar()
-                .template("{spinner:.green} [{elapsed_precise}] {bar:40.cyan/blue} {pos}/{len} {msg}")
-                .unwrap_or_else(|_| ProgressStyle::default_bar())
+                .template(
+                    "{spinner:.green} [{elapsed_precise}] {bar:40.cyan/blue} {pos}/{len} {msg}",
+                )
+                .unwrap_or_else(|_| ProgressStyle::default_bar()),
         );
 
         for item in items {
-            pb.set_message(format!("Cleaning: {}", item.path.file_name().map(|n| n.to_string_lossy()).unwrap_or_default()));
+            pb.set_message(format!(
+                "Cleaning: {}",
+                item.path
+                    .file_name()
+                    .map(|n| n.to_string_lossy())
+                    .unwrap_or_default()
+            ));
 
             let clean_result = if self.use_trash {
-                trash::delete(&item.path)
-                    .map_err(|e| std::io::Error::other(e.to_string()))
+                trash::delete(&item.path).map_err(|e| std::io::Error::other(e.to_string()))
             } else if item.path.is_dir() {
                 std::fs::remove_dir_all(&item.path)
             } else {

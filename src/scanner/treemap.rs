@@ -1,13 +1,13 @@
 //! High-performance Treemap implementation using Squarified algorithm
-//! 
+//!
 //! This module provides a treemap visualization for storage analysis,
 //! similar to SpaceSniffer/WinDirStat. Uses the Squarified Treemap algorithm
 //! for optimal visual aspect ratios.
 
+use rayon::prelude::*;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
-use rayon::prelude::*;
 
 /// A node in the directory tree
 #[derive(Debug, Clone)]
@@ -60,7 +60,12 @@ pub struct Rect {
 
 impl Rect {
     pub fn new(x: f64, y: f64, width: f64, height: f64) -> Self {
-        Self { x, y, width, height }
+        Self {
+            x,
+            y,
+            width,
+            height,
+        }
     }
 
     /// Get the shorter side
@@ -139,9 +144,7 @@ impl TreemapBuilder {
         }
 
         // Read directory entries
-        let entries: Vec<_> = std::fs::read_dir(path)?
-            .filter_map(|e| e.ok())
-            .collect();
+        let entries: Vec<_> = std::fs::read_dir(path)?.filter_map(|e| e.ok()).collect();
 
         // Process children (parallel if enabled and depth allows)
         let children: Vec<TreeNode> = if self.parallel && depth < 2 {
@@ -201,7 +204,7 @@ impl TreemapBuilder {
 
         let mut node = TreeNode::new(path.to_path_buf(), name, total_size, true, depth);
         node.children = children;
-        
+
         // Sort children by size descending
         node.children.sort_by(|a, b| b.size.cmp(&a.size));
 
@@ -288,7 +291,7 @@ impl SquarifiedLayout {
         while start < normalized.len() {
             let (row, end) = Self::find_best_row(&normalized[start..], remaining);
             let row_rects = Self::layout_row(&row, remaining);
-            
+
             // Update remaining area
             let row_area: f64 = row.iter().sum();
             if remaining.is_horizontal() {
@@ -411,7 +414,7 @@ pub fn analyze_extensions(root: &TreeNode) -> Vec<ExtensionStats> {
     collect_extensions(root, &mut stats);
 
     let total: u64 = stats.values().map(|(s, _)| s).sum();
-    
+
     let mut result: Vec<ExtensionStats> = stats
         .into_iter()
         .map(|(ext, (size, count))| ExtensionStats {
@@ -432,11 +435,12 @@ pub fn analyze_extensions(root: &TreeNode) -> Vec<ExtensionStats> {
 
 fn collect_extensions(node: &TreeNode, stats: &mut HashMap<String, (u64, usize)>) {
     if !node.is_dir {
-        let ext = node.path
+        let ext = node
+            .path
             .extension()
             .map(|e| e.to_string_lossy().to_lowercase())
             .unwrap_or_else(|| "(no ext)".to_string());
-        
+
         let entry = stats.entry(ext).or_insert((0, 0));
         entry.0 += node.size;
         entry.1 += 1;

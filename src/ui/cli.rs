@@ -38,7 +38,7 @@ pub enum Commands {
     #[command(visible_alias = "s")]
     Scan {
         /// Categories to scan (comma-separated)
-        /// 
+        ///
         /// Available categories: system, brew, xcode, nodejs, python, rust, go, java, docker, android, heuristic, macapps, linuxpackages
         #[arg(short = 'C', long, value_delimiter = ',')]
         categories: Option<Vec<String>>,

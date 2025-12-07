@@ -8,11 +8,11 @@ use cleanmymac_rs::{
     config::Config,
     rules::{get_all_rules, get_rules_by_category},
     scanner::{FileScanner, ScanSummary, StorageAnalyzer},
-    ui::{tui::App, Cli, Commands, OutputFormat},
+    ui::{Cli, Commands, OutputFormat, tui::App},
 };
 use colored::*;
 use dialoguer::Confirm;
-use tracing_subscriber::{fmt, prelude::*, EnvFilter};
+use tracing_subscriber::{EnvFilter, fmt, prelude::*};
 
 fn main() -> anyhow::Result<()> {
     // Parse command line arguments
@@ -113,7 +113,11 @@ fn run_scan(
             for (category, items) in &summary.by_category {
                 println!("\n{}:", category.bold());
                 for item in items {
-                    println!("  {} ({})", item.path.display(), bytesize::ByteSize::b(item.size));
+                    println!(
+                        "  {} ({})",
+                        item.path.display(),
+                        bytesize::ByteSize::b(item.size)
+                    );
                 }
             }
         }
@@ -161,7 +165,10 @@ fn print_summary_table(summary: &ScanSummary) {
         "{} {} items, {}",
         "Total:".bold(),
         summary.total_items,
-        bytesize::ByteSize::b(summary.total_size).to_string().green().bold()
+        bytesize::ByteSize::b(summary.total_size)
+            .to_string()
+            .green()
+            .bold()
     );
 }
 
@@ -206,7 +213,11 @@ fn run_clean(
                 "\nDo you want to clean {} items ({})? {}",
                 items.len(),
                 total_size,
-                if permanent { "(PERMANENT)" } else { "(to trash)" }
+                if permanent {
+                    "(PERMANENT)"
+                } else {
+                    "(to trash)"
+                }
             ))
             .default(false)
             .interact()
@@ -229,7 +240,10 @@ fn run_clean(
             "\n{} Cleaned {} items, freed {}",
             "✅".green(),
             result.cleaned_count,
-            bytesize::ByteSize::b(result.bytes_freed).to_string().green().bold()
+            bytesize::ByteSize::b(result.bytes_freed)
+                .to_string()
+                .green()
+                .bold()
         );
 
         if !result.failed.is_empty() {
@@ -257,15 +271,16 @@ fn run_analyze(path: Option<String>, depth: usize, top: usize) -> anyhow::Result
         target_path.display()
     );
 
-    let analyzer = StorageAnalyzer::new()
-        .with_max_depth(depth)
-        .with_top_n(top);
+    let analyzer = StorageAnalyzer::new().with_max_depth(depth).with_top_n(top);
 
     let info = analyzer.analyze(&target_path)?;
 
     println!("{}", "Storage Analysis".bold());
     println!("{}", "═".repeat(60));
-    println!("Total size: {}", bytesize::ByteSize::b(info.total_size).to_string().green());
+    println!(
+        "Total size: {}",
+        bytesize::ByteSize::b(info.total_size).to_string().green()
+    );
     println!("Files: {}", info.file_count);
     println!("Directories: {}", info.dir_count);
 
@@ -336,7 +351,11 @@ fn run_list(category: Option<String>, detailed: bool) -> anyhow::Result<()> {
 
         if detailed {
             println!("    {}", rule.description().dimmed());
-            let paths: Vec<_> = rule.scan_paths().iter().map(|p| p.display().to_string()).collect();
+            let paths: Vec<_> = rule
+                .scan_paths()
+                .iter()
+                .map(|p| p.display().to_string())
+                .collect();
             if !paths.is_empty() {
                 println!("    Paths: {}", paths.join(", ").dimmed());
             }
@@ -383,9 +402,18 @@ fn run_config(init: bool, show: bool, path: Option<String>) -> anyhow::Result<()
         println!("{}", toml_str);
     } else {
         println!("{}", "Configuration Commands:".bold());
-        println!("  {} Initialize default configuration", "cleanmymac-rs config --init".cyan());
-        println!("  {} Show current configuration", "cleanmymac-rs config --show".cyan());
-        println!("  {} Initialize at custom path", "cleanmymac-rs config --init --path <PATH>".cyan());
+        println!(
+            "  {} Initialize default configuration",
+            "cleanmymac-rs config --init".cyan()
+        );
+        println!(
+            "  {} Show current configuration",
+            "cleanmymac-rs config --show".cyan()
+        );
+        println!(
+            "  {} Initialize at custom path",
+            "cleanmymac-rs config --init --path <PATH>".cyan()
+        );
     }
 
     Ok(())

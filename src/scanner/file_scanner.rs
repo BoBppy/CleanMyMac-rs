@@ -1,9 +1,9 @@
 //! Parallel file scanner using rayon
 
 use crate::rules::{CleanItem, CleanRule};
+use indicatif::{ProgressBar, ProgressStyle};
 use rayon::prelude::*;
 use std::sync::{Arc, Mutex};
-use indicatif::{ProgressBar, ProgressStyle};
 
 /// File scanner for scanning cleanable items
 pub struct FileScanner {
@@ -20,12 +20,14 @@ impl FileScanner {
     /// Scan all rules and return cleanable items
     pub fn scan(&self) -> anyhow::Result<Vec<CleanItem>> {
         let items: Arc<Mutex<Vec<CleanItem>>> = Arc::new(Mutex::new(Vec::new()));
-        
+
         let pb = ProgressBar::new(self.rules.len() as u64);
         pb.set_style(
             ProgressStyle::default_bar()
-                .template("{spinner:.green} [{elapsed_precise}] {bar:40.cyan/blue} {pos}/{len} {msg}")
-                .unwrap_or_else(|_| ProgressStyle::default_bar())
+                .template(
+                    "{spinner:.green} [{elapsed_precise}] {bar:40.cyan/blue} {pos}/{len} {msg}",
+                )
+                .unwrap_or_else(|_| ProgressStyle::default_bar()),
         );
 
         // Scan rules in parallel
@@ -115,17 +117,14 @@ impl ScanSummary {
     /// Create a summary from a list of items
     pub fn from_items(items: Vec<CleanItem>) -> Self {
         use std::collections::HashMap;
-        
+
         let mut by_category: HashMap<String, Vec<CleanItem>> = HashMap::new();
         let mut total_size = 0u64;
 
         for item in items {
             total_size += item.size;
             let category_name = item.category.to_string();
-            by_category
-                .entry(category_name)
-                .or_default()
-                .push(item);
+            by_category.entry(category_name).or_default().push(item);
         }
 
         let total_items = by_category.values().map(|v| v.len()).sum();

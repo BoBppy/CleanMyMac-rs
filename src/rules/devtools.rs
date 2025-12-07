@@ -60,8 +60,7 @@ fn clean_items(items: &[CleanItem], to_trash: bool) -> anyhow::Result<CleanResul
 
     for item in items {
         let clean_result = if to_trash {
-            trash::delete(&item.path)
-                .map_err(|e| std::io::Error::other(e.to_string()))
+            trash::delete(&item.path).map_err(|e| std::io::Error::other(e.to_string()))
         } else if item.path.is_dir() {
             std::fs::remove_dir_all(&item.path)
         } else {
@@ -541,7 +540,7 @@ impl CleanRule for CargoTargetRule {
 
     fn scan(&self) -> anyhow::Result<Vec<CleanItem>> {
         let mut items = Vec::new();
-        
+
         // Common project locations
         let search_dirs = if let Some(home) = dirs::home_dir() {
             vec![
@@ -888,7 +887,7 @@ impl CleanRule for DockerCacheRule {
             Ok(output) if output.status.success() => {
                 let stdout = String::from_utf8_lossy(&output.stdout);
                 let mut total_reclaimable = 0u64;
-                
+
                 for line in stdout.lines() {
                     // Parse sizes like "1.5GB", "500MB"
                     let trimmed = line.trim().to_uppercase();
@@ -929,7 +928,12 @@ impl CleanRule for DockerCacheRule {
                     .find(|l| l.contains("reclaimed"))
                     .and_then(|l| {
                         l.split_whitespace()
-                            .find(|s| s.chars().next().map(|c| c.is_ascii_digit()).unwrap_or(false))
+                            .find(|s| {
+                                s.chars()
+                                    .next()
+                                    .map(|c| c.is_ascii_digit())
+                                    .unwrap_or(false)
+                            })
                             .and_then(|s| parse_size(&s.to_uppercase()))
                     })
                     .unwrap_or(0);
@@ -979,7 +983,11 @@ fn parse_size(s: &str) -> Option<u64> {
         return None;
     };
 
-    num_part.trim().parse::<f64>().ok().map(|n| (n * unit as f64) as u64)
+    num_part
+        .trim()
+        .parse::<f64>()
+        .ok()
+        .map(|n| (n * unit as f64) as u64)
 }
 
 // ============ IDE & Editor Rules ============
@@ -1162,7 +1170,15 @@ impl CleanRule for JetBrainsCacheRule {
                 paths.push(cache_base);
             }
             // Also check for individual IDE caches
-            let ides = ["IntelliJIdea", "WebStorm", "PyCharm", "CLion", "GoLand", "RustRover", "DataGrip"];
+            let ides = [
+                "IntelliJIdea",
+                "WebStorm",
+                "PyCharm",
+                "CLion",
+                "GoLand",
+                "RustRover",
+                "DataGrip",
+            ];
             for ide in &ides {
                 let pattern = home.join(format!("Library/Caches/{}", ide));
                 if pattern.exists() {
@@ -1634,4 +1650,3 @@ impl CleanRule for RubyCacheRule {
         clean_items(items, to_trash)
     }
 }
-

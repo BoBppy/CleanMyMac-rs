@@ -1,8 +1,8 @@
 //! Storage analyzer for analyzing disk usage
 
+use std::collections::HashMap;
 use std::path::PathBuf;
 use walkdir::WalkDir;
-use std::collections::HashMap;
 
 /// Storage usage information
 #[derive(Debug, Clone, Default)]
@@ -62,7 +62,7 @@ impl StorageAnalyzer {
 
         for entry in walker.into_iter().filter_map(|e| e.ok()) {
             let entry_path = entry.path();
-            
+
             if let Ok(metadata) = entry_path.metadata() {
                 if metadata.is_file() {
                     let size = metadata.len();

@@ -26,9 +26,7 @@ const CACHE_PATTERNS: &[&str] = &[
 
 /// Patterns that indicate temporary files
 #[allow(dead_code)]
-const TEMP_EXTENSIONS: &[&str] = &[
-    "tmp", "temp", "log", "bak", "old", "orig", "swp", "swo",
-];
+const TEMP_EXTENSIONS: &[&str] = &["tmp", "temp", "log", "bak", "old", "orig", "swp", "swo"];
 
 /// Heuristic detection rule
 #[derive(Debug)]
@@ -60,7 +58,9 @@ impl HeuristicRule {
     /// Check if a directory name matches cache patterns
     fn is_cache_name(name: &str) -> bool {
         let lower = name.to_lowercase();
-        CACHE_PATTERNS.iter().any(|p| lower.contains(&p.to_lowercase()))
+        CACHE_PATTERNS
+            .iter()
+            .any(|p| lower.contains(&p.to_lowercase()))
     }
 
     /// Check if a file has a temporary extension
@@ -88,7 +88,8 @@ impl HeuristicRule {
     fn is_stale(&self, path: &std::path::Path) -> bool {
         if let Ok(metadata) = path.metadata() {
             if let Ok(modified) = metadata.modified() {
-                let threshold = SystemTime::now() - Duration::from_secs(self.stale_days as u64 * 24 * 60 * 60);
+                let threshold =
+                    SystemTime::now() - Duration::from_secs(self.stale_days as u64 * 24 * 60 * 60);
                 return modified < threshold;
             }
         }
@@ -110,7 +111,7 @@ impl HeuristicRule {
             .filter_map(|e| e.ok())
         {
             let path = entry.path();
-            
+
             // Skip if we can't read
             if path.metadata().is_err() {
                 continue;
@@ -128,7 +129,7 @@ impl HeuristicRule {
                             } else {
                                 RiskLevel::Medium
                             };
-                            
+
                             items.push(CleanItem::new(
                                 path.to_path_buf(),
                                 size,
@@ -172,26 +173,34 @@ impl CleanRule for HeuristicRule {
 
     fn scan_paths(&self) -> Vec<PathBuf> {
         let mut paths = Vec::new();
-        
+
         // Common locations to scan for caches
         if let Some(home) = dirs::home_dir() {
             paths.push(home.clone());
-            
+
             // Common project directories
-            for dir in &["Projects", "projects", "Code", "code", "Development", "dev", "src"] {
+            for dir in &[
+                "Projects",
+                "projects",
+                "Code",
+                "code",
+                "Development",
+                "dev",
+                "src",
+            ] {
                 let p = home.join(dir);
                 if p.exists() {
                     paths.push(p);
                 }
             }
         }
-        
+
         paths
     }
 
     fn scan(&self) -> anyhow::Result<Vec<CleanItem>> {
         let mut items = Vec::new();
-        
+
         // Scan home directory (with limited depth)
         if let Some(home) = dirs::home_dir() {
             // Scan direct children of home for cache directories
@@ -204,7 +213,7 @@ impl CleanRule for HeuristicRule {
                             if name.starts_with('.') && !Self::is_cache_name(name) {
                                 continue;
                             }
-                            
+
                             if Self::is_cache_name(name) {
                                 let size = Self::dir_size(&path);
                                 if size >= self.size_threshold {
@@ -221,7 +230,7 @@ impl CleanRule for HeuristicRule {
                     }
                 }
             }
-            
+
             // Scan project directories for large temp/cache directories
             for dir in &["Projects", "projects", "Code", "code", "Development", "dev"] {
                 let project_dir = home.join(dir);
@@ -243,8 +252,7 @@ impl CleanRule for HeuristicRule {
 
         for item in items {
             let clean_result = if to_trash {
-                trash::delete(&item.path)
-                    .map_err(|e| std::io::Error::other(e.to_string()))
+                trash::delete(&item.path).map_err(|e| std::io::Error::other(e.to_string()))
             } else if item.path.is_dir() {
                 std::fs::remove_dir_all(&item.path)
             } else {
@@ -312,7 +320,7 @@ impl HeuristicDetector {
         }
 
         let name = path.file_name()?.to_str()?;
-        
+
         // Check if name matches cache patterns
         if !HeuristicRule::is_cache_name(name) {
             return None;
@@ -325,16 +333,17 @@ impl HeuristicDetector {
 
         // Calculate confidence based on various factors
         let mut confidence: f64 = 0.5;
-        
+
         // Exact match increases confidence
         if name.to_lowercase() == "cache" || name.to_lowercase() == "caches" {
             confidence += 0.3;
         }
-        
+
         // Check staleness
         let is_stale = if let Ok(metadata) = path.metadata() {
             if let Ok(modified) = metadata.modified() {
-                let threshold = SystemTime::now() - Duration::from_secs(self.stale_days as u64 * 24 * 60 * 60);
+                let threshold =
+                    SystemTime::now() - Duration::from_secs(self.stale_days as u64 * 24 * 60 * 60);
                 if modified < threshold {
                     confidence += 0.1;
                     true

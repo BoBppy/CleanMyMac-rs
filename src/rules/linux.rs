@@ -35,7 +35,7 @@ fn clean_items(items: &[CleanItem], to_trash: bool) -> anyhow::Result<CleanResul
     for item in items {
         let clean_result = if to_trash {
             trash::delete(&item.path)
-                .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))
+                .map_err(|e| std::io::Error::other(e.to_string()))
         } else if item.path.is_dir() {
             std::fs::remove_dir_all(&item.path)
         } else {
@@ -92,7 +92,7 @@ impl CleanRule for AptCacheRule {
                 if let Ok(entries) = std::fs::read_dir(&path) {
                     let mut total_size = 0u64;
                     let mut deb_count = 0;
-                    
+
                     for entry in entries.filter_map(|e| e.ok()) {
                         let entry_path = entry.path();
                         if entry_path.extension().map(|e| e == "deb").unwrap_or(false) {
@@ -102,7 +102,7 @@ impl CleanRule for AptCacheRule {
                             }
                         }
                     }
-                    
+
                     if total_size > 0 {
                         items.push(CleanItem::new(
                             path,
@@ -121,7 +121,7 @@ impl CleanRule for AptCacheRule {
     fn clean(&self, items: &[CleanItem], _to_trash: bool) -> anyhow::Result<CleanResult> {
         // For APT cache, we should use apt-get clean instead
         let mut result = CleanResult::default();
-        
+
         for item in items {
             // Clean only .deb files
             if let Ok(entries) = std::fs::read_dir(&item.path) {
@@ -143,7 +143,7 @@ impl CleanRule for AptCacheRule {
                 }
             }
         }
-        
+
         Ok(result)
     }
 }
@@ -490,7 +490,7 @@ impl CleanRule for UserCacheRule {
 
     fn scan(&self) -> anyhow::Result<Vec<CleanItem>> {
         let mut items = Vec::new();
-        
+
         // Skip caches that are handled by other rules
         let skip_patterns = ["pip", "npm", "yarn", "cargo", "go"];
 

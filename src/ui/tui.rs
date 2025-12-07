@@ -1,23 +1,23 @@
 //! Modern TUI interface using ratatui
 
 use crate::cleaner::Cleaner;
-use crate::rules::{get_all_rules, CleanItem, RiskLevel};
+use crate::rules::{CleanItem, RiskLevel, get_all_rules};
 use crate::scanner::FileScanner;
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyModifiers},
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
 use ratatui::{
+    Frame, Terminal,
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style, Stylize},
     text::{Line, Span},
     widgets::{
-        Block, Borders, BorderType, Clear, List, ListItem, ListState, Padding, Paragraph,
+        Block, BorderType, Borders, Clear, List, ListItem, ListState, Padding, Paragraph,
         Scrollbar, ScrollbarOrientation, ScrollbarState, Tabs, Wrap,
     },
-    Frame, Terminal,
 };
 use std::io;
 use std::time::{Duration, Instant};
@@ -89,7 +89,7 @@ impl App {
 
         // Main loop
         let tick_rate = Duration::from_millis(100);
-        
+
         loop {
             terminal.draw(|f| self.ui(f))?;
 
@@ -153,7 +153,11 @@ impl App {
                 self.current_tab = (self.current_tab + 1) % 3;
             }
             KeyCode::BackTab => {
-                self.current_tab = if self.current_tab == 0 { 2 } else { self.current_tab - 1 };
+                self.current_tab = if self.current_tab == 0 {
+                    2
+                } else {
+                    self.current_tab - 1
+                };
             }
             KeyCode::Up | KeyCode::Char('k') => {
                 self.previous_item();
@@ -234,10 +238,10 @@ impl App {
     fn scan(&mut self) {
         self.is_scanning = true;
         self.status_message = String::from("🔍 Scanning...");
-        
+
         let rules = get_all_rules();
         let scanner = FileScanner::new(rules);
-        
+
         match scanner.scan_quiet() {
             Ok(items) => {
                 self.selected = vec![false; items.len()];
@@ -257,7 +261,7 @@ impl App {
                 self.status_message = format!("❌ Scan failed: {}", e);
             }
         }
-        
+
         self.is_scanning = false;
     }
 
@@ -272,7 +276,8 @@ impl App {
             .collect();
 
         if selected_items.is_empty() {
-            self.status_message = String::from("⚠️ No items selected. Press Space to select items.");
+            self.status_message =
+                String::from("⚠️ No items selected. Press Space to select items.");
             return;
         }
 
@@ -280,7 +285,7 @@ impl App {
         self.status_message = String::from("🧹 Cleaning...");
 
         let cleaner = Cleaner::new().use_trash(true).confirm_high_risk(false);
-        
+
         match cleaner.clean(&selected_items) {
             Ok(result) => {
                 self.status_message = format!(
@@ -324,10 +329,10 @@ impl App {
             .direction(Direction::Vertical)
             .margin(1)
             .constraints([
-                Constraint::Length(3),  // Title bar
-                Constraint::Length(3),  // Tabs
-                Constraint::Min(10),    // Main content
-                Constraint::Length(3),  // Status bar
+                Constraint::Length(3), // Title bar
+                Constraint::Length(3), // Tabs
+                Constraint::Min(10),   // Main content
+                Constraint::Length(3), // Status bar
             ])
             .split(size);
 
@@ -444,7 +449,10 @@ impl App {
                 let content = Line::from(vec![
                     Span::styled(checkbox, Style::default().fg(Color::Cyan)),
                     Span::styled("● ", Style::default().fg(risk_color)),
-                    Span::styled(format!("{:>10} ", size_str), Style::default().fg(Color::Yellow)),
+                    Span::styled(
+                        format!("{:>10} ", size_str),
+                        Style::default().fg(Color::Yellow),
+                    ),
                     Span::styled(path_short, Style::default().fg(Color::White)),
                 ]);
 
@@ -487,19 +495,18 @@ impl App {
     /// Render details panel
     fn render_details_panel(&self, frame: &mut Frame, area: Rect) {
         let selected_count = self.selected.iter().filter(|&&s| s).count();
-        
+
         let details = if let Some(i) = self.list_state.selected() {
             if let Some(item) = self.items.get(i) {
                 vec![
-                    Line::from(vec![
-                        Span::styled("Path: ", Style::default().fg(Color::Gray)),
-                    ]),
-                    Line::from(vec![
-                        Span::styled(
-                            format!("  {}", item.path.display()),
-                            Style::default().fg(Color::White),
-                        ),
-                    ]),
+                    Line::from(vec![Span::styled(
+                        "Path: ",
+                        Style::default().fg(Color::Gray),
+                    )]),
+                    Line::from(vec![Span::styled(
+                        format!("  {}", item.path.display()),
+                        Style::default().fg(Color::White),
+                    )]),
                     Line::from(""),
                     Line::from(vec![
                         Span::styled("Size: ", Style::default().fg(Color::Gray)),
@@ -511,10 +518,7 @@ impl App {
                     Line::from(""),
                     Line::from(vec![
                         Span::styled("Category: ", Style::default().fg(Color::Gray)),
-                        Span::styled(
-                            item.category.to_string(),
-                            Style::default().fg(Color::Cyan),
-                        ),
+                        Span::styled(item.category.to_string(), Style::default().fg(Color::Cyan)),
                     ]),
                     Line::from(""),
                     Line::from(vec![
@@ -529,15 +533,14 @@ impl App {
                         ),
                     ]),
                     Line::from(""),
-                    Line::from(vec![
-                        Span::styled("Description: ", Style::default().fg(Color::Gray)),
-                    ]),
-                    Line::from(vec![
-                        Span::styled(
-                            format!("  {}", item.description),
-                            Style::default().fg(Color::White),
-                        ),
-                    ]),
+                    Line::from(vec![Span::styled(
+                        "Description: ",
+                        Style::default().fg(Color::Gray),
+                    )]),
+                    Line::from(vec![Span::styled(
+                        format!("  {}", item.description),
+                        Style::default().fg(Color::White),
+                    )]),
                 ]
             } else {
                 vec![Line::from("No item selected")]
@@ -602,7 +605,10 @@ impl App {
             Line::from(""),
             Line::from(vec![
                 Span::styled("📊 ", Style::default()),
-                Span::styled("Storage by Category", Style::default().fg(Color::Cyan).bold()),
+                Span::styled(
+                    "Storage by Category",
+                    Style::default().fg(Color::Cyan).bold(),
+                ),
             ]),
             Line::from(""),
             Line::from(vec![
@@ -611,7 +617,10 @@ impl App {
                     format_bytes(total_size),
                     Style::default().fg(Color::Green).bold(),
                 ),
-                Span::styled(format!(" ({} items)", self.items.len()), Style::default().fg(Color::Gray)),
+                Span::styled(
+                    format!(" ({} items)", self.items.len()),
+                    Style::default().fg(Color::Gray),
+                ),
             ]),
             Line::from(""),
         ];
@@ -624,8 +633,14 @@ impl App {
 
         // Color palette for categories
         let colors = [
-            Color::Cyan, Color::Green, Color::Yellow, Color::Magenta, 
-            Color::Blue, Color::Red, Color::LightCyan, Color::LightGreen,
+            Color::Cyan,
+            Color::Green,
+            Color::Yellow,
+            Color::Magenta,
+            Color::Blue,
+            Color::Red,
+            Color::LightCyan,
+            Color::LightGreen,
         ];
 
         for (i, (category, size)) in categories.iter().enumerate() {
@@ -634,27 +649,34 @@ impl App {
             } else {
                 0
             };
-            
+
             // Calculate bar length
             let bar_len = if max_size > 0 {
                 ((**size as f64 / max_size as f64) * bar_width as f64) as usize
             } else {
                 0
             };
-            
+
             let bar = "█".repeat(bar_len);
             let empty = "░".repeat(bar_width - bar_len);
             let color = colors[i % colors.len()];
 
-            content.push(Line::from(vec![
-                Span::styled(format!("{:<12} ", category), Style::default().fg(Color::White)),
-            ]));
+            content.push(Line::from(vec![Span::styled(
+                format!("{:<12} ", category),
+                Style::default().fg(Color::White),
+            )]));
             content.push(Line::from(vec![
                 Span::styled("  ", Style::default()),
                 Span::styled(bar, Style::default().fg(color)),
                 Span::styled(empty, Style::default().fg(Color::DarkGray)),
-                Span::styled(format!(" {:>8} ", format_bytes(**size)), Style::default().fg(Color::Yellow)),
-                Span::styled(format!("{:>3}%", percentage), Style::default().fg(Color::Gray)),
+                Span::styled(
+                    format!(" {:>8} ", format_bytes(**size)),
+                    Style::default().fg(Color::Yellow),
+                ),
+                Span::styled(
+                    format!("{:>3}%", percentage),
+                    Style::default().fg(Color::Gray),
+                ),
             ]));
         }
 
@@ -687,11 +709,12 @@ impl App {
         sorted_items.sort_by(|a, b| b.size.cmp(&a.size));
 
         for (i, item) in sorted_items.iter().take(10).enumerate() {
-            let name = item.path
+            let name = item
+                .path
                 .file_name()
                 .map(|n| n.to_string_lossy().to_string())
                 .unwrap_or_else(|| "unknown".to_string());
-            
+
             let name_short = if name.len() > 20 {
                 format!("{}...", &name[..17])
             } else {
@@ -714,8 +737,14 @@ impl App {
             right_content.push(Line::from(vec![
                 Span::styled(format!("{:>2}. ", i + 1), Style::default().fg(Color::Gray)),
                 Span::styled(format!("{:<20} ", name_short), Style::default().fg(color)),
-                Span::styled(format!("{:>8}", format_bytes(item.size)), Style::default().fg(Color::Yellow)),
-                Span::styled(format!(" {:>2}%", percentage), Style::default().fg(Color::Gray)),
+                Span::styled(
+                    format!("{:>8}", format_bytes(item.size)),
+                    Style::default().fg(Color::Yellow),
+                ),
+                Span::styled(
+                    format!(" {:>2}%", percentage),
+                    Style::default().fg(Color::Gray),
+                ),
             ]));
         }
 
@@ -725,14 +754,18 @@ impl App {
         right_content.push(Line::from(""));
         right_content.push(Line::from(vec![
             Span::styled("💾 ", Style::default()),
-            Span::styled("Disk Space Reclaimable", Style::default().fg(Color::Cyan).bold()),
+            Span::styled(
+                "Disk Space Reclaimable",
+                Style::default().fg(Color::Cyan).bold(),
+            ),
         ]));
         right_content.push(Line::from(""));
-        
+
         // Create a simple visualization of space
         let segments: usize = 30;
         let mut usage_bar = String::new();
-        let category_segments: Vec<_> = categories.iter()
+        let category_segments: Vec<_> = categories
+            .iter()
             .take(5)
             .map(|(_, size)| {
                 if total_size > 0 {
@@ -742,7 +775,7 @@ impl App {
                 }
             })
             .collect();
-        
+
         let mut used = 0;
         for (i, &seg) in category_segments.iter().enumerate() {
             let symbol = match i {
@@ -759,7 +792,10 @@ impl App {
 
         right_content.push(Line::from(vec![
             Span::styled("[", Style::default().fg(Color::Gray)),
-            Span::styled(&usage_bar[..usage_bar.len().min(30)], Style::default().fg(Color::Cyan)),
+            Span::styled(
+                &usage_bar[..usage_bar.len().min(30)],
+                Style::default().fg(Color::Cyan),
+            ),
             Span::styled("]", Style::default().fg(Color::Gray)),
         ]));
 
@@ -795,7 +831,10 @@ impl App {
             Line::from(vec![
                 Span::styled("  [", Style::default().fg(Color::Gray)),
                 Span::styled("✓", Style::default().fg(Color::Green)),
-                Span::styled("] Confirm High-Risk Operations", Style::default().fg(Color::White)),
+                Span::styled(
+                    "] Confirm High-Risk Operations",
+                    Style::default().fg(Color::White),
+                ),
             ]),
             Line::from(vec![
                 Span::styled("  [", Style::default().fg(Color::Gray)),
@@ -810,22 +849,19 @@ impl App {
             Line::from(""),
             Line::from("─".repeat(40)),
             Line::from(""),
-            Line::from(vec![
-                Span::styled("Config file: ", Style::default().fg(Color::Gray)),
-            ]),
-            Line::from(vec![
-                Span::styled(
-                    "  ~/.config/cleanmymac-rs/config.toml",
-                    Style::default().fg(Color::Yellow),
-                ),
-            ]),
+            Line::from(vec![Span::styled(
+                "Config file: ",
+                Style::default().fg(Color::Gray),
+            )]),
+            Line::from(vec![Span::styled(
+                "  ~/.config/cleanmymac-rs/config.toml",
+                Style::default().fg(Color::Yellow),
+            )]),
             Line::from(""),
-            Line::from(vec![
-                Span::styled(
-                    "Tip: Edit the config file to customize behavior",
-                    Style::default().fg(Color::Gray).italic(),
-                ),
-            ]),
+            Line::from(vec![Span::styled(
+                "Tip: Edit the config file to customize behavior",
+                Style::default().fg(Color::Gray).italic(),
+            )]),
         ];
 
         let paragraph = Paragraph::new(content)
@@ -904,13 +940,17 @@ impl App {
 
         let help_text = vec![
             Line::from(""),
-            Line::from(vec![
-                Span::styled("  Keyboard Shortcuts", Style::default().fg(Color::Cyan).bold()),
-            ]),
+            Line::from(vec![Span::styled(
+                "  Keyboard Shortcuts",
+                Style::default().fg(Color::Cyan).bold(),
+            )]),
             Line::from(""),
             Line::from(vec![
                 Span::styled("  s        ", Style::default().fg(Color::Yellow)),
-                Span::styled("Scan for cleanable files", Style::default().fg(Color::White)),
+                Span::styled(
+                    "Scan for cleanable files",
+                    Style::default().fg(Color::White),
+                ),
             ]),
             Line::from(vec![
                 Span::styled("  c        ", Style::default().fg(Color::Yellow)),
@@ -918,7 +958,10 @@ impl App {
             ]),
             Line::from(vec![
                 Span::styled("  a        ", Style::default().fg(Color::Yellow)),
-                Span::styled("Select/Deselect all items", Style::default().fg(Color::White)),
+                Span::styled(
+                    "Select/Deselect all items",
+                    Style::default().fg(Color::White),
+                ),
             ]),
             Line::from(vec![
                 Span::styled("  Space    ", Style::default().fg(Color::Yellow)),
@@ -945,12 +988,10 @@ impl App {
                 Span::styled("Quit", Style::default().fg(Color::White)),
             ]),
             Line::from(""),
-            Line::from(vec![
-                Span::styled(
-                    "  Press any key to close",
-                    Style::default().fg(Color::Gray).italic(),
-                ),
-            ]),
+            Line::from(vec![Span::styled(
+                "  Press any key to close",
+                Style::default().fg(Color::Gray).italic(),
+            )]),
         ];
 
         let help = Paragraph::new(help_text)

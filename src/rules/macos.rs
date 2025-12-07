@@ -35,8 +35,7 @@ fn clean_items(items: &[CleanItem], to_trash: bool) -> anyhow::Result<CleanResul
 
     for item in items {
         let clean_result = if to_trash {
-            trash::delete(&item.path)
-                .map_err(|e| std::io::Error::other(e.to_string()))
+            trash::delete(&item.path).map_err(|e| std::io::Error::other(e.to_string()))
         } else if item.path.is_dir() {
             std::fs::remove_dir_all(&item.path)
         } else {
@@ -444,7 +443,7 @@ impl CleanRule for MacOSCacheRule {
             if path.exists() {
                 // Scan individual app caches, skip certain system caches
                 let skip_patterns = ["com.apple.", "CloudKit", "FamilyCircle"];
-                
+
                 if let Ok(entries) = std::fs::read_dir(&path) {
                     for entry in entries.filter_map(|e| e.ok()) {
                         let entry_path = entry.path();
@@ -452,12 +451,12 @@ impl CleanRule for MacOSCacheRule {
                             .file_name()
                             .map(|n| n.to_string_lossy().to_string())
                             .unwrap_or_default();
-                        
+
                         // Skip system caches
                         if skip_patterns.iter().any(|p| name.starts_with(p)) {
                             continue;
                         }
-                        
+
                         if entry_path.is_dir() {
                             let size = dir_size(&entry_path);
                             if size > 1024 * 1024 {

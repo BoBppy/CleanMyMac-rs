@@ -20,7 +20,6 @@ pub struct Config {
     pub ignore: IgnoreConfig,
 }
 
-
 /// General configuration options
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
@@ -120,11 +119,11 @@ pub struct IgnoreConfig {
     pub paths: Vec<PathBuf>,
 }
 
-
 impl Config {
     /// Load configuration from a TOML file
     pub fn load(path: &std::path::Path) -> crate::Result<Self> {
-        let content = std::fs::read_to_string(path).map_err(|e| crate::Error::Config(e.to_string()))?;
+        let content =
+            std::fs::read_to_string(path).map_err(|e| crate::Error::Config(e.to_string()))?;
         let config: Config = toml::from_str(&content)?;
         Ok(config)
     }
@@ -157,17 +156,15 @@ impl Config {
 
     /// Save configuration to a TOML file
     pub fn save(&self, path: &std::path::Path) -> crate::Result<()> {
-        let content = toml::to_string_pretty(self)
-            .map_err(|e| crate::Error::Config(e.to_string()))?;
-        
+        let content =
+            toml::to_string_pretty(self).map_err(|e| crate::Error::Config(e.to_string()))?;
+
         if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent)
-                .map_err(|e| crate::Error::Config(e.to_string()))?;
+            std::fs::create_dir_all(parent).map_err(|e| crate::Error::Config(e.to_string()))?;
         }
-        
-        std::fs::write(path, content)
-            .map_err(|e| crate::Error::Config(e.to_string()))?;
-        
+
+        std::fs::write(path, content).map_err(|e| crate::Error::Config(e.to_string()))?;
+
         Ok(())
     }
 

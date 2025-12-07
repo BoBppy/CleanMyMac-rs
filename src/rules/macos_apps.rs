@@ -31,8 +31,7 @@ fn clean_items(items: &[CleanItem], to_trash: bool) -> anyhow::Result<CleanResul
 
     for item in items {
         let clean_result = if to_trash {
-            trash::delete(&item.path)
-                .map_err(|e| std::io::Error::other(e.to_string()))
+            trash::delete(&item.path).map_err(|e| std::io::Error::other(e.to_string()))
         } else if item.path.is_dir() {
             std::fs::remove_dir_all(&item.path)
         } else {
@@ -87,7 +86,7 @@ impl CleanRule for AppCacheRule {
 
     fn scan(&self) -> anyhow::Result<Vec<CleanItem>> {
         let mut items = Vec::new();
-        
+
         // Skip system and already-handled caches
         let skip_patterns = [
             "com.apple.",
@@ -95,7 +94,7 @@ impl CleanRule for AppCacheRule {
             "CocoaPods",
             "CloudKit",
             "FamilyCircle",
-            "Google",  // Often needed for Chrome etc
+            "Google", // Often needed for Chrome etc
         ];
 
         for path in self.scan_paths() {
@@ -172,7 +171,7 @@ impl CleanRule for AppLogsRule {
 
     fn scan(&self) -> anyhow::Result<Vec<CleanItem>> {
         let mut items = Vec::new();
-        
+
         // Skip certain system logs
         let skip_patterns = ["DiagnosticReports", "CrashReporter"];
 
@@ -263,8 +262,15 @@ impl CleanRule for AppSupportCacheRule {
 
     fn scan(&self) -> anyhow::Result<Vec<CleanItem>> {
         let mut items = Vec::new();
-        
-        let cache_names = ["Cache", "Caches", "cache", "CachedData", "GPUCache", "ShaderCache"];
+
+        let cache_names = [
+            "Cache",
+            "Caches",
+            "cache",
+            "CachedData",
+            "GPUCache",
+            "ShaderCache",
+        ];
 
         for base_path in self.scan_paths() {
             if base_path.exists() {
