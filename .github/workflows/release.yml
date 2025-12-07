@@ -15,15 +15,15 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: macos-latest
+          - os: macos-13
             target: x86_64-apple-darwin
-            artifact: cleanmymac-rs-macos-x86_64
-          - os: macos-latest
+            artifact_name: cleanmymac-rs-macos-x86_64
+          - os: macos-14
             target: aarch64-apple-darwin
-            artifact: cleanmymac-rs-macos-aarch64
+            artifact_name: cleanmymac-rs-macos-aarch64
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            artifact: cleanmymac-rs-linux-x86_64
+            artifact_name: cleanmymac-rs-linux-x86_64
     steps:
       - uses: actions/checkout@v4
 
@@ -39,14 +39,14 @@ jobs:
       - name: Create archive
         run: |
           cd target/${{ matrix.target }}/release
-          tar -czvf ../../../${{ matrix.artifact }}.tar.gz cleanmymac-rs
+          tar -czvf ../../../${{ matrix.artifact_name }}.tar.gz cleanmymac-rs
           cd ../../..
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact }}
-          path: ${{ matrix.artifact }}.tar.gz
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.artifact_name }}.tar.gz
 
   release:
     name: Create Release

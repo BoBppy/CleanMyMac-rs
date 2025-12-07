@@ -16,7 +16,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
-        rust: [stable, beta]
+        rust: [stable]
     steps:
       - uses: actions/checkout@v4
 
@@ -67,15 +67,15 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: macos-latest
+          - os: macos-13
             target: x86_64-apple-darwin
-            artifact: cleanmymac-rs-macos-x86_64
-          - os: macos-latest
+            artifact_name: cleanmymac-rs-macos-x86_64
+          - os: macos-14
             target: aarch64-apple-darwin
-            artifact: cleanmymac-rs-macos-aarch64
+            artifact_name: cleanmymac-rs-macos-aarch64
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            artifact: cleanmymac-rs-linux-x86_64
+            artifact_name: cleanmymac-rs-linux-x86_64
     steps:
       - uses: actions/checkout@v4
 
@@ -91,6 +91,6 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact }}
+          name: ${{ matrix.artifact_name }}
           path: target/${{ matrix.target }}/release/cleanmymac-rs
           if-no-files-found: error
