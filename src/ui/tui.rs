@@ -20,7 +20,19 @@ use ratatui::{
     },
 };
 use std::io;
+use std::sync::mpsc::{self, Receiver};
+use std::thread;
 use std::time::{Duration, Instant};
+
+/// Messages for communication between scanner thread and UI
+enum ScanMessage {
+    /// Found a batch of items
+    FoundItems(Vec<CleanItem>),
+    /// Scan completed
+    Finished,
+    /// Scan failed with error
+    Error(String),
+}
 
 /// App state for the TUI
 pub struct App {
@@ -50,6 +62,8 @@ pub struct App {
     animation_frame: usize,
     /// Last tick time
     last_tick: Instant,
+    /// Channel receiver for scan results
+    scan_rx: Option<Receiver<ScanMessage>>,
 }
 
 impl Default for App {
@@ -68,6 +82,7 @@ impl Default for App {
             show_help: false,
             animation_frame: 0,
             last_tick: Instant::now(),
+            scan_rx: None,
         }
     }
 }
@@ -93,6 +108,45 @@ impl App {
         loop {
             terminal.draw(|f| self.ui(f))?;
 
+            // Check for scan results
+            let mut scan_finished = false;
+            if let Some(rx) = &self.scan_rx {
+                while let Ok(msg) = rx.try_recv() {
+                    match msg {
+                        ScanMessage::FoundItems(items) => {
+                            self.items = items;
+                        }
+                        ScanMessage::Finished => {
+                            self.is_scanning = false;
+                            scan_finished = true;
+
+                            // Post-scan updates
+                            self.selected = vec![false; self.items.len()];
+                            self.scrollbar_state =
+                                ScrollbarState::default().content_length(self.items.len());
+                            if !self.items.is_empty() {
+                                self.list_state.select(Some(0));
+                            }
+                            let total_size = self.items.iter().map(|i| i.size).sum::<u64>();
+                            self.status_message = format!(
+                                "✅ Found {} items ({}). Press Space to select, 'c' to clean",
+                                self.items.len(),
+                                format_bytes(total_size)
+                            );
+                        }
+                        ScanMessage::Error(e) => {
+                            self.is_scanning = false;
+                            scan_finished = true;
+                            self.status_message = format!("❌ Scan failed: {}", e);
+                        }
+                    }
+                }
+            }
+
+            if scan_finished {
+                self.scan_rx = None;
+            }
+
             // Handle events with timeout
             if event::poll(tick_rate)? {
                 if let Event::Key(key) = event::read()? {
@@ -104,6 +158,15 @@ impl App {
             if self.last_tick.elapsed() >= Duration::from_millis(100) {
                 self.animation_frame = (self.animation_frame + 1) % 8;
                 self.last_tick = Instant::now();
+
+                // Update status message if scanning
+                if self.is_scanning {
+                    let spinner = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+                    self.status_message = format!(
+                        "{} Scanning...",
+                        spinner[self.animation_frame % spinner.len()]
+                    );
+                }
             }
 
             if self.should_quit {
@@ -236,33 +299,31 @@ impl App {
 
     /// Scan for cleanable items
     fn scan(&mut self) {
-        self.is_scanning = true;
-        self.status_message = String::from("🔍 Scanning...");
-
-        let rules = get_all_rules();
-        let scanner = FileScanner::new(rules);
-
-        match scanner.scan_quiet() {
-            Ok(items) => {
-                self.selected = vec![false; items.len()];
-                self.items = items;
-                self.scrollbar_state = ScrollbarState::default().content_length(self.items.len());
-                if !self.items.is_empty() {
-                    self.list_state.select(Some(0));
-                }
-                let total_size = self.items.iter().map(|i| i.size).sum::<u64>();
-                self.status_message = format!(
-                    "✅ Found {} items ({}). Press Space to select, 'c' to clean",
-                    self.items.len(),
-                    format_bytes(total_size)
-                );
-            }
-            Err(e) => {
-                self.status_message = format!("❌ Scan failed: {}", e);
-            }
+        if self.is_scanning {
+            return;
         }
 
-        self.is_scanning = false;
+        self.is_scanning = true;
+        self.status_message = String::from("🔍 Scanning...");
+        self.items.clear();
+        self.selected.clear();
+
+        let (tx, rx) = mpsc::channel();
+        self.scan_rx = Some(rx);
+
+        thread::spawn(move || {
+            let rules = get_all_rules();
+            let scanner = FileScanner::new(rules);
+            match scanner.scan_quiet() {
+                Ok(items) => {
+                    let _ = tx.send(ScanMessage::FoundItems(items));
+                    let _ = tx.send(ScanMessage::Finished);
+                }
+                Err(e) => {
+                    let _ = tx.send(ScanMessage::Error(e.to_string()));
+                }
+            }
+        });
     }
 
     /// Clean selected items

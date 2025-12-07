@@ -4,6 +4,7 @@
 //! for various platforms and development tools.
 
 mod devtools;
+mod docker;
 mod heuristic;
 #[cfg(target_os = "linux")]
 mod linux;
@@ -11,8 +12,11 @@ mod linux;
 mod macos;
 #[cfg(target_os = "macos")]
 mod macos_apps;
+mod misc;
+mod trash;
 
 pub use devtools::*;
+pub use docker::*;
 pub use heuristic::*;
 #[cfg(target_os = "linux")]
 pub use linux::*;
@@ -20,6 +24,8 @@ pub use linux::*;
 pub use macos::*;
 #[cfg(target_os = "macos")]
 pub use macos_apps::*;
+pub use misc::*;
+pub use trash::*;
 
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -219,6 +225,15 @@ pub fn get_all_rules() -> Vec<Box<dyn CleanRule>> {
 
     // Add cross-platform dev tools rules
     rules.extend(devtools::get_devtools_rules());
+
+    // Add Docker rule
+    rules.push(Box::new(docker::DockerRule));
+
+    // Add Trash rule
+    rules.push(Box::new(trash::TrashRule));
+
+    // Add Misc rules
+    rules.push(Box::new(misc::DsStoreRule));
 
     // Add heuristic detector
     rules.push(Box::new(heuristic::HeuristicRule::default()));
