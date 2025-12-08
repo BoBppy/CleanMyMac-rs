@@ -18,7 +18,7 @@ clap = { version = "4", features = ["derive", "cargo", "wrap_help"] }
 # File operations
 walkdir = "2"
 ignore = "0.4"
-dirs = "5"
+dirs = "6"
 trash = "5"
 
 # System info
